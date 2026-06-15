@@ -1,0 +1,596 @@
+/* --- STYLES GÉNÉRAUX --- */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    background-color: #f4f7f9;
+    color: #333;
+    margin: 0;
+    padding: 10px;
+    /* Empêcher la sélection de texte pendant le drag */
+    user-select: none;
+}
+.container {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    max-width: 950px;
+    width: 100%;
+    margin: 10px auto;
+    border-top: 5px solid #007bff;
+    box-sizing: border-box;
+}
+/* h1 est maintenant géré dans la section .app-header */
+h2 { font-size: 1.4em; margin-top: 25px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+h3 { font-size: 1.1em; margin-bottom: 15px; }
+p { color: #555; text-align: center; margin-bottom: 25px; }
+
+/* --- NOUVEAU : STYLES EN-TÊTE APPLICATIF (CENTRÉ) --- */
+.app-header {
+    display: flex;
+    flex-direction: column; /* Aligne les éléments verticalement */
+    align-items: center;   /* Centre les éléments horizontalement */
+    gap: 10px;             /* Espace entre le logo, le titre et le sous-titre */
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    text-align: center;
+}
+.header-logo {
+    height: 60px; /* Taille du logo */
+}
+.app-header h1 {
+    margin: 5px 0 0 0; /* Un peu d'espace au-dessus, pas en dessous */
+    font-size: 2.2em;
+    color: #0056b3;
+}
+.app-header p {
+    margin: 0; /* Pas de marge additionnelle */
+    font-size: 1.1em;
+    color: #666;
+}
+
+.upload-section {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+.file-upload-wrapper { position: relative; display: inline-block; cursor: pointer; }
+.file-upload-wrapper input[type="file"] { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.btn { background-color: #007bff; color: white; padding: 12px 20px; border-radius: 5px; font-size: 16px; font-weight: bold; border: none; cursor: pointer; transition: background-color 0.3s ease; display: inline-block; margin: 5px; }
+.btn:hover { background-color: #0056b3; }
+.btn-success { background-color: #28a745; }
+.btn-success:hover { background-color: #218838; }
+.btn-secondary { background-color: #6c757d; }
+.btn-secondary:hover { background-color: #5a6268; }
+.btn-info { background-color: #17a2b8; }
+.btn-info:hover { background-color: #138496; }
+.btn-warning { background-color: #ffc107; color: #212529; }
+.btn-warning:hover { background-color: #e0a800; }
+.btn-print { background-color: #4a4a4a; }
+.btn-print:hover { background-color: #333333; }
+.btn-sm { padding: 5px 12px; font-size: 13px; font-weight: normal; }
+#status { text-align: center; margin-top: 20px; font-style: italic; color: #666; min-height: 24px; }
+#log-container { margin-top: 20px; }
+
+/* --- STYLES PARAMÈTRES GÉNÉRAUX & IMPRESSION --- */
+.global-settings-section { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+.settings-grid { 
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px 25px;
+}
+.global-settings-section .form-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.global-settings-section label { font-weight: bold; flex-shrink: 0; }
+.param-input-wrapper { display: flex; align-items: center; gap: 5px; background-color: white; border: 1px solid #ccc; padding: 4px 8px; border-radius: 5px; }
+.param-input-wrapper input { border: none; text-align: center; width: 60px; font-size: 16px; -moz-appearance: textfield; }
+.param-input-wrapper input::-webkit-outer-spin-button, .param-input-wrapper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.param-input-wrapper input:focus { outline: none; }
+#nav-start-time {
+    width: 90px; /* Plus large pour l'icône du time picker */
+}
+.param-input-wrapper span { font-weight: bold; color: #555; }
+.action-bar { text-align: center; margin-top: 25px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
+/* NOUVEAU : Style pour la barre du haut */
+#top-action-bar {
+    margin-top: 0;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.print-controls { text-align: center; }
+.print-options { display: flex; gap: 15px; justify-content: center; margin-bottom: 10px; }
+.print-options label { cursor: pointer; display: flex; align-items: center; gap: 5px; }
+
+/* --- STYLES TABLEAU & ÉDITION --- */
+.table-wrapper { overflow-x: auto; }
+#log-table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
+#log-table th, #log-table td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; vertical-align: top; word-wrap: break-word; }
+#log-table thead { background-color: #e9ecef; font-weight: bold; }
+tr.has-override { background-color: #fffbe6; } /* Style pour ligne avec ISA spécifique */
+tr.has-override td { background-color: inherit; } /* Assure que toutes les cellules héritent */
+
+
+.col-num { width: 5%; } 
+.col-wp { width: 15%; } 
+.col-coords { width: 25%; }
+.col-alt { width: 20%; }
+.col-comment { width: 25%; }
+.col-actions { width: 10%; }
+
+.editable-cell input { width: calc(100% - 14px); padding: 4px; border: 1px solid #ccc; border-radius: 4px; }
+.edit-btn { background: #6c757d; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; float: right; margin-left: 5px; }
+.edit-btn.save { background: #28a745; }
+.delete-btn { background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; margin-top: 4px; width: 100%; box-sizing: border-box; }
+.delete-btn:hover { background: #c82333; }
+.comment-textarea { width: 100%; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; padding: 6px; font-family: inherit; font-size: 14px; resize: none; overflow-y: hidden; min-height: 30px; }
+.input-error { border: 2px solid #dc3545 !important; }
+
+
+/* --- STYLES POUR LE GLISSER-DÉPOSER --- */
+.draggable-row { transition: background-color 0.2s ease-in-out; }
+.draggable-row .drag-handle { cursor: grab; text-align: center; }
+.draggable-row .drag-handle .drag-icon { margin-left: 8px; color: #aaa; }
+.draggable-row.dragging { cursor: grabbing; opacity: 0.6; background: #e7f3ff; }
+.draggable-row.dragging * { cursor: grabbing; }
+
+/* Indicateurs de position de dépôt */
+.draggable-row.drag-over-top { border-top: 3px solid #007bff; }
+.draggable-row.drag-over-bottom { border-bottom: 3px solid #007bff; }
+/* Empêche l'indicateur de se dessiner sur la ligne de séparation */
+.insert-row.drag-over-top, .insert-row.drag-over-bottom { border: none !important; }
+
+
+/* --- MODIFIÉ : STYLES POUR LA CELLULE ALTITUDE (SIMPLIFIÉE) --- */
+.altitude-cell-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Augmentation de l'espace pour une meilleure lisibilité */
+}
+
+/* Bloc Altitude Vraie (Saisie utilisateur) */
+.true-altitude-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.altitude-input {
+    width: 80px; /* Légèrement plus large */
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+    font-weight: bold;
+    text-align: right;
+}
+.true-altitude-wrapper .unit {
+    font-weight: bold;
+}
+.true-altitude-wrapper .label {
+    font-size: 0.85em;
+    color: #666;
+}
+
+/* Bloc des valeurs calculées */
+.calculated-values {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-left: 10px; /* Indentation pour la clarté */
+    border-left: 2px solid #e9ecef; /* Ligne de séparation visuelle */
+}
+
+/* Altitude Indiquée (valeur calculée) */
+.indicated-altitude-display {
+    font-size: 0.95em;
+    color: #0056b3;
+}
+.indicated-altitude-display .value {
+    font-weight: bold;
+}
+.indicated-altitude-display .label {
+    font-size: 0.9em;
+    margin-left: 4px;
+}
+
+/* Température extérieure (OAT) */
+.oat-display {
+    font-size: 0.9em;
+    color: #333;
+}
+.oat-display .value {
+    font-weight: bold;
+    color: #17a2b8; /* Couleur distincte pour la température */
+}
+
+
+/* --- STYLES INSERTION LIGNE --- */
+.insert-row td { padding: 12px; background-color: #f8f9fa; border-left: 1px solid #ddd; border-right: 1px solid #ddd; border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; }
+.insert-cell-content { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; width: 100%; font-size: 13px; color: #555; gap: 10px; }
+.add-wp-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.distance-input { width: 60px !important; font-size: 13px !important; padding: 4px !important; text-align: right; }
+.add-wp-btn, .add-manual-wp-btn { background-color: #007bff; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s ease; white-space: nowrap; }
+.add-wp-btn:hover, .add-manual-wp-btn:hover { background-color: #0056b3; }
+.add-manual-wp-btn { background-color: #5a6268; }
+.add-manual-wp-btn:hover { background-color: #494f54; }
+
+.manual-add-form { display: none; padding: 10px; background-color: #e9ecef; border-radius: 5px; }
+.manual-add-form .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.manual-add-form .form-group { display: flex; flex-direction: column; }
+.manual-add-form .input-hint { font-size: 11px; color: #666; margin-top: 2px; }
+.manual-add-form .form-group.full-width { grid-column: 1 / -1; }
+.manual-add-form label { font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #495057; }
+.manual-add-form input, .manual-add-form textarea { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+.manual-add-form .form-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+
+.warning-banner { background-color: #fffbe6; border: 1px solid #ffe58f; color: #8a6d3b; padding: 10px 15px; border-radius: 5px; margin: 15px 0; text-align: center; }
+#download-container { margin-top: 20px; text-align: center; }
+.download-link { display: inline-block; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; color: white; transition: background-color 0.3s ease; margin: 5px; }
+
+/* --- STYLES MODALES --- */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 15px; box-sizing: border-box; }
+.modal-content { background: #fff; padding: 25px 30px; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); text-align: center; max-width: 550px; width: 100%; position: relative; animation: fadeInModal 0.3s ease-out; }
+@keyframes fadeInModal { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+.modal-content h3 { margin-top: 0; color: #333; }
+.modal-description { text-align: center; color: #666; margin-bottom: 25px; }
+.modal-close { position: absolute; top: 10px; right: 15px; font-size: 28px; color: #aaa; cursor: pointer; line-height: 1; }
+.modal-close:hover { color: #333; }
+.modal-actions { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
+.modal-actions .btn { flex-grow: 1; }
+
+#print-content { display: none; } /* Masquer le contenu d'impression par défaut */
+
+/* Bouton pour ajouter la DZ */
+.add-dz-btn {
+    background: #17a2b8; /* Bleu info */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-top: 4px;
+    margin-bottom: 4px; /* Espace avec le bouton supprimer */
+    width: 100%;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease;
+}
+.add-dz-btn:hover {
+    background: #138496;
+}
+
+/* Grille du formulaire de la modale DZ */
+.dz-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px 20px;
+    margin-bottom: 20px;
+}
+.dz-form-grid .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.dz-form-grid .form-group.full-width {
+    grid-column: 1 / -1;
+}
+.dz-form-grid label {
+    font-weight: bold;
+    font-size: 0.9em;
+    color: #555;
+}
+.dz-form-grid input, .dz-form-grid select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+/* Section météo dans la modale */
+#dz-weather-section {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+#dz-weather-section h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    text-align: left;
+}
+.dz-weather-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-size: 0.9em;
+    margin-top: 10px;
+    background: #f9f9f9;
+    padding: 10px;
+    border-radius: 5px;
+}
+.dz-weather-grid span {
+    color: #333;
+}
+.dz-weather-grid span.value {
+    font-weight: bold;
+    color: #0056b3;
+    text-align: right;
+}
+
+
+/* --- STYLES ENCART MÉTÉO --- */
+#weather-section {
+    background-color: #f0f8ff;
+    border: 1px solid #b0e0e6;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin: 25px 0;
+}
+#weather-section h2 {
+    margin-top: 0;
+    color: #0056b3;
+}
+.weather-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 5px;
+}
+.datetime-wrapper {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-grow: 1;
+}
+#forecast-datetime {
+    padding: 7px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.api-key-info {
+    font-size: 0.8em;
+    color: #666;
+    margin: 5px 0 15px 0;
+    text-align: left;
+}
+#weather-results-container {
+    margin-top: 15px;
+}
+.weather-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+.weather-item {
+    background-color: #fff;
+    padding: 12px;
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    border-left: 4px solid #17a2b8;
+    display: flex;
+    flex-direction: column;
+}
+.weather-item .label {
+    display: block;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+.weather-data-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 1.1em;
+    margin-bottom: 4px;
+}
+.weather-data-row .param-name {
+    font-weight: normal;
+    color: #555;
+    font-size: 0.9em;
+}
+.weather-data-row .value {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #0056b3;
+}
+.weather-data-row .unit {
+    font-size: 0.8em;
+    margin-left: 5px;
+    color: #555;
+}
+.loader {
+    border: 4px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 4px solid #007bff;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 10px auto;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.weather-error {
+    color: #dc3545;
+    font-weight: bold;
+    text-align: center;
+    padding: 10px;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+}
+
+
+/* ============================================================================ */
+/* --- STYLES D'IMPRESSION "HYPER STYLÉ" --- */
+/* ============================================================================ */
+@media print {
+    @page {
+        size: A4;
+        /*               Haut   Droite  Bas    Gauche */
+        margin:         15mm   15mm    10mm   15mm;
+    }
+
+    body {
+        background-color: #fff;
+        color: #2c3e50;
+        font-size: 9.5pt;
+        padding: 0;
+        margin: 0;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    body > .container, #fpl-options-modal, #print-header, #dz-options-modal { display: none; }
+    #print-content { display: block !important; }
+
+    /* --- NOUVEAUX STYLES POUR LE RÉSUMÉ D'IMPRESSION --- */
+    #print-summary-info {
+        display: flex;
+        justify-content: space-between;
+        gap: 8mm;
+        width: 100%;
+        margin-bottom: 8mm; /* Ajoute l'espace demandé */
+        font-size: 8pt;
+        page-break-after: avoid;
+    }
+    .print-summary-box {
+        flex: 1;
+        padding: 3mm;
+        background-color: #f8f9fa !important;
+        border: 1px solid #dfe6e9 !important;
+        border-radius: 3px;
+    }
+    .print-summary-box h4 {
+        margin: 0 0 2.5mm 0;
+        font-size: 9pt;
+        color: #34495e;
+        border-bottom: 1px solid #bdc3c7;
+        padding-bottom: 1.5mm;
+    }
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 1mm;
+    }
+    .summary-label {
+        color: #636e72;
+    }
+    .summary-value {
+        font-weight: bold;
+        font-family: 'Courier New', Courier, monospace;
+        text-align: right;
+        white-space: pre;
+    }
+    /* --- FIN DES NOUVEAUX STYLES --- */
+
+
+    /* Styles de la table */
+    .print-log-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: auto;
+    }
+
+    .print-log-table th, .print-log-table td {
+        text-align: left;
+        vertical-align: top;
+        padding: 8px 10px;
+        border-bottom: 1px solid #dfe6e9;
+    }
+
+    /* En-tête de la table */
+    .print-log-table thead th {
+        background-color: #34495e !important;
+        color: #ffffff !important;
+        font-size: 8.5pt;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #2c3e50;
+    }
+    
+    /* Ligne de données du waypoint */
+    .waypoint-data-row {
+       page-break-inside: avoid;
+    }
+    .print-log-table tbody tr:nth-of-type(odd) {
+        background-color: #f8f9fa !important;
+    }
+    .print-log-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .waypoint-identifier-cell {
+        padding-top: 6px;
+        padding-bottom: 6px;
+    }
+    .leg-info {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 8.5pt;
+        color: #7f8c8d;
+        margin-bottom: 4px;
+        white-space: nowrap;
+    }
+    .leg-arrow-icon {
+        width: 12px;
+        height: 12px;
+        stroke: #7f8c8d;
+        stroke-width: 2.5;
+        flex-shrink: 0;
+    }
+    .waypoint-identifier {
+        font-weight: bold;
+        font-size: 10.5pt;
+        color: #2980b9;
+    }
+
+    /* Styles pour les autres colonnes */
+    .data-value {
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 10pt;
+    }
+    .print-col-comment {
+        white-space: pre-wrap; /* Respecte les sauts de ligne et espaces */
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 8pt; /* Plus petit pour que ça tienne */
+        line-height: 1.3;
+        word-break: break-word;
+    }
+}
+
+/* --- MEDIA QUERIES APPLICATIFS (hors impression) --- */
+@media (max-width: 768px) {
+    body { padding: 5px; }
+    .container { padding: 15px; }
+    .app-header h1 { font-size: 1.8em; }
+    .header-logo { height: 50px; }
+    .btn { padding: 10px 15px; font-size: 15px; }
+    #log-table th, #log-table td { padding: 6px 8px; }
+    .insert-cell-content { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .action-bar { flex-direction: column; gap: 20px; align-items: center; }
+    #top-action-bar { border-bottom: none; padding-bottom: 0; }
+    .modal-content { max-width: 95%; }
+    .dz-form-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+    .app-header h1 { font-size: 1.5em; }
+    .action-bar .btn { width: calc(50% - 10px); margin: 5px; }
+    #log-table { font-size: 13px; }
+    #log-table th, #log-table td { padding: 5px; }
+    .col-num { width: 10%; } .col-wp { width: 25%; } .col-coords { width: 65%; } 
+    .col-alt, .col-comment, .col-actions { display: none; } 
+    #log-table th.col-alt, #log-table td:has(.altitude-cell-content),
+    #log-table th.col-comment, #log-table td:has(.comment-textarea),
+    #log-table th.col-actions, #log-table td:has(.delete-btn) { display: none; }
+}

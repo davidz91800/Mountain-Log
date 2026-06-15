@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mountain Log - Éditeur de Plan de Vol</title>
+    
+    <!-- PWA Manifest & Theme -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#007bff">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+    <link rel="icon" href="logo.png" type="image/png"> <!-- Favicon avec le logo -->
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <!-- EN-TÊTE CENTRÉ (MODIFIÉ) -->
+        <header class="app-header">
+            <img src="logo.png" alt="Logo de Mountain Log" class="header-logo">
+            <h1>Mountain Log</h1>
+        </header>
+        
+        <div class="upload-section">
+            <div class="file-upload-wrapper">
+                <span class="btn">Choisir un fichier (.fpl, .json)</span>
+                <input type="file" id="fileInput" accept=".fpl, .xml, .json">
+            </div>
+        </div>
+
+        <!-- NOUVEL ENCART MÉTÉO (version Open-Meteo) -->
+        <div id="weather-section" style="display: none;">
+            <h2>Prévisions Météo</h2>
+            
+            <div class="weather-controls">
+                <div class="datetime-wrapper">
+                    <label for="forecast-datetime">Date & Heure (UTC) :</label>
+                    <input type="datetime-local" id="forecast-datetime">
+                    <button id="fetch-weather-btn" class="btn btn-sm">Récupérer</button>
+                </div>
+            </div>
+            <p class="api-key-info">Données météo par <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>.</p>
+            
+            <div id="weather-results-container">
+                <!-- Les résultats météo seront injectés ici par JavaScript -->
+            </div>
+        </div>
+
+        <div id="log-container" style="display: none;">
+            <!-- Ce div n'est plus utilisé comme modèle, mais conservé au cas où -->
+            <div id="print-header" style="display: none;"></div>
+            
+            <div class="global-settings-section">
+                <h2>Paramètres Généraux</h2>
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label for="global-isa-input">Écart ISA global :</label>
+                        <div class="param-input-wrapper">
+                            <span>ISA</span>
+                            <input type="number" id="global-isa-input" value="0" step="1">
+                            <span>°C</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="turn-radius-180">Diamètre mini virage 180 KIAS :</label>
+                        <div class="param-input-wrapper">
+                            <input type="number" id="turn-radius-180" value="1.5" step="0.1">
+                            <span>Nm</span>
+                        </div>
+                    </div>
+                                        <div class="form-group">
+                        <label for="gradient-3eng">Pente 3ENG :</label>
+                        <div class="param-input-wrapper">
+                            <input type="number" id="gradient-3eng" value="500" step="10">
+                            <span>ft/Nm</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="turn-radius-150">Diamètre mini 150 KIAS (Flaps 50%) :</label>
+                        <div class="param-input-wrapper">
+                            <input type="number" id="turn-radius-150" value="1.0" step="0.1">
+                            <span>Nm</span>
+                        </div>
+                    </div>
+                     <div class="form-group">
+                        <label for="nav-start-time">Heure début nav (Z) :</label>
+                        <div class="param-input-wrapper">
+                            <input type="time" id="nav-start-time" value="08:00">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="avg-ground-speed">Vitesse Sol moyenne :</label>
+                        <div class="param-input-wrapper">
+                            <input type="number" id="avg-ground-speed" value="180" step="5">
+                            <span>kt</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NOUVEAU : Barre d'actions du haut -->
+            <div id="top-action-bar" class="action-bar">
+                 <div>
+                    <h3>Exporter le plan de vol</h3>
+                    <button class="btn btn-warning generate-json-btn">JSON</button>
+                    <button class="btn btn-secondary generate-fpl-btn">FPL</button>
+                    <button class="btn btn-success generate-kml-btn">KML</button>
+                    <button class="btn btn-info generate-crd-btn">CRD</button>
+                </div>
+                <div class="print-controls">
+                    <h3>Impression PDF</h3>
+                    <div class="print-options">
+                        <label><input type="checkbox" id="print-indicated-alt-top" checked> Alt. Indiquée</label>
+                        <label><input type="checkbox" id="print-true-alt-top" checked> Alt. Vraie</label>
+                    </div>
+                    <button class="btn btn-print print-btn">🖨️ Imprimer</button>
+                </div>
+            </div>
+
+
+            <div class="warning-banner" style="display: none;"></div>
+            <h2>Log de Navigation</h2>
+            <div class="table-wrapper">
+                <table id="log-table">
+                    <thead>
+                        <tr>
+                            <th class="col-num">#</th>
+                            <th class="col-wp">Waypoint</th>
+                            <th class="col-coords">Coordonnées</th>
+                            <th class="col-alt">Altitude</th>
+                            <th class="col-comment">Commentaires</th>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-body"></tbody>
+                </table>
+            </div>
+            <div class="warning-banner" style="display: none;"></div>
+            
+            <!-- Barre d'actions du bas (modifiée pour utiliser des classes) -->
+            <div class="action-bar">
+                <div>
+                    <h3>Exporter le plan de vol</h3>
+                    <button class="btn btn-warning generate-json-btn">JSON</button>
+                    <button class="btn btn-secondary generate-fpl-btn">FPL</button>
+                    <button class="btn btn-success generate-kml-btn">KML</button>
+                    <button class="btn btn-info generate-crd-btn">CRD</button>
+                </div>
+                <div class="print-controls">
+                    <h3>Impression PDF</h3>
+                    <div class="print-options">
+                        <label><input type="checkbox" id="print-indicated-alt-bottom" checked> Alt. Indiquée</label>
+                        <label><input type="checkbox" id="print-true-alt-bottom" checked> Alt. Vraie</label>
+                    </div>
+                    <button class="btn btn-print print-btn">🖨️ Imprimer</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="download-container" style="display: none;"></div>
+    </div>
+
+    <!-- NOUVEAU : Boîte de dialogue modale pour les options FPL -->
+    <div id="fpl-options-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close" id="fpl-modal-close">×</span>
+            <h3>Options d'exportation FPL</h3>
+            <p class="modal-description">Choisissez le format des identifiants de waypoints pour le fichier FPL.</p>
+            <div class="modal-actions">
+                <button id="fpl-standard-btn" class="btn btn-primary">Nom Standard</button>
+                <button id="fpl-altitude-btn" class="btn btn-secondary">Nom + Altitudes</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NOUVEAU : Boîte de dialogue modale pour les options DZ -->
+    <div id="dz-options-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close" id="dz-modal-close">×</span>
+            <h3>Paramètres de la Drop Zone (DZ)</h3>
+            <div id="dz-form-container">
+                <div class="dz-form-grid">
+                    <!-- Ligne 1: CARP & TOT -->
+                    <div class="form-group">
+                        <label for="dz-carp">CARP</label>
+                        <select id="dz-carp">
+                            <option>CARP01</option><option>CARP02</option><option>CARP03</option><option>CARP04</option><option>CARP05</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>TOT (calculé)</label>
+                        <input type="text" id="dz-tot" readonly>
+                    </div>
+
+                    <!-- Ligne 2: LE-TE & LE-PI -->
+                    <div class="form-group">
+                        <label for="dz-le-te">LE-TE</label>
+                        <div class="param-input-wrapper"><input type="number" id="dz-le-te" value="0"><span>m</span></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="dz-le-pi">LE-PI</label>
+                        <div class="param-input-wrapper"><input type="number" id="dz-le-pi" value="0"><span>m</span></div>
+                    </div>
+
+                    <!-- Ligne 3: Run-in Course -->
+                    <div class="form-group full-width">
+                        <label for="dz-run-in">Run-in Course</label>
+                        <div class="param-input-wrapper">
+                            <input type="number" id="dz-run-in" value="0" min="0" max="360"><span>°</span>
+                        </div>
+                    </div>
+
+                    <!-- Ligne 4: TP & SD/STAB -->
+                    <div class="form-group">
+                        <label for="dz-tp">TP</label>
+                        <div class="param-input-wrapper"><input type="number" id="dz-tp" value="1" step="0.1"><span>Nm</span></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="dz-sd-stab-value">
+                            <select id="dz-sd-stab-select" style="border:none; background:transparent; font-weight:bold;">
+                                <option>STAB</option>
+                                <option>SD</option>
+                            </select>
+                        </label>
+                        <div class="param-input-wrapper"><input type="number" id="dz-sd-stab-value" value="1" step="0.1"><span>Nm</span></div>
+                    </div>
+                    
+                    <!-- Ligne 5: DZ ESC & Altitude DZ -->
+                    <div class="form-group">
+                        <label for="dz-esc">DZ ESC</label>
+                        <div class="param-input-wrapper"><input type="number" id="dz-esc" value="0.1" step="0.1"><span>Nm</span></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="dz-altitude">Altitude DZ (Zt)</label>
+                        <div class="param-input-wrapper"><input type="number" id="dz-altitude" value="1000" step="100"><span>ft</span></div>
+                    </div>
+
+                    <!-- Ligne 6: Hauteur de largage -->
+                    <div class="form-group full-width">
+                        <label for="dz-drop-height">Hauteur Largage (H)</label>
+                        <div class="param-input-wrapper">
+                             <select id="dz-drop-height-select">
+                                <option value="984">Standard (984 ft)</option>
+                                <option value="1312">Haute (1312 ft)</option>
+                                <option value="custom">Personnalisée</option>
+                            </select>
+                            <input type="number" id="dz-drop-height-custom" value="984" step="10" style="display:none; width: 80px;">
+                            <span>ft</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Météo -->
+                <div id="dz-weather-section">
+                    <h4>Météo sur la DZ au TOT</h4>
+                    <button id="dz-fetch-weather-btn" class="btn btn-sm">Récupérer la météo</button>
+                    <div id="dz-weather-results" class="dz-weather-grid">
+                        <!-- Les résultats seront injectés ici -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="dz-save-btn" class="btn btn-success">Enregistrer et fermer</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Conteneur pour le contenu à imprimer (masqué par défaut) -->
+    <div id="print-content" style="display: none;"></div>
+
+    <!-- Scripts (dans l'ordre de dépendance) -->
+    <script src="geoUtils.js"></script>
+    <script src="generators.js"></script>
+    <script src="fileHandlers.js"></script>
+    <script src="app.js"></script>
+
+</body>
+</html>

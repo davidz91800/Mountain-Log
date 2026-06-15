@@ -1,0 +1,11 @@
+# Outils / config locale Claude Code
+.claude/
+
+# Fichiers générés par l'OS et la synchro Drive
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Logs
+*.log
