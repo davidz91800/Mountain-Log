@@ -780,6 +780,17 @@ function handlePrint(clickedButton) {
     const printIndicated = document.getElementById(indicatedCheckboxId).checked;
     const printTrue = document.getElementById(trueCheckboxId).checked;
 
+    // En-tête de la colonne Altitude : titre + légende rappelant la mise en forme des
+    // valeurs empilées (« Indiquée » en gras, « (Vraie) » en normal).
+    let altHeaderHtml = '';
+    if (printIndicated || printTrue) {
+        let altLegend;
+        if (printIndicated && printTrue) altLegend = 'Indiquée <span class="th-normal">(Vraie)</span>';
+        else if (printIndicated) altLegend = 'Indiquée';
+        else altLegend = 'Vraie';
+        altHeaderHtml = `<th class="print-col-alt">Altitude<br><span class="alt-header-legend">${altLegend}</span></th>`;
+    }
+
     let printHtml = '';
 
     // Construction du résumé de vol
@@ -836,7 +847,7 @@ function handlePrint(clickedButton) {
                     <th class="print-col-num">#</th>
                     <th class="print-col-wp">Waypoint</th>
                     <th class="print-col-coords">Coord.</th>
-                    ${(printIndicated || printTrue) ? '<th class="print-col-alt">Altitude</th>' : ''}
+                    ${altHeaderHtml}
                     <th class="print-col-comment">Commentaires</th>
                 </tr>
             </thead>

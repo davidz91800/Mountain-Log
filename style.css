@@ -853,14 +853,18 @@ tr.has-override td { background-color: inherit; }
     .alt-true-value { font-family: 'Courier New', Courier, monospace; font-size: 8.5pt; color: #95a5a6; margin-top: 2px; }
     /* La colonne commentaires occupe toute la largeur restante. */
     .print-col-coords { white-space: nowrap; }
-    .print-col-comment {
-        width: 100%;
+    .print-col-comment { width: 100%; }
+    /* Texte des commentaires en monospace ; l'en-tête garde la police standard des titres. */
+    td.print-col-comment {
         white-space: pre-wrap;
         font-family: 'Courier New', Courier, monospace;
         font-size: 8pt;
         line-height: 1.3;
         word-break: break-word;
     }
+    /* Légende sous le titre ALTITUDE : « Indiquée » en gras, « (Vraie) » en normal. */
+    .alt-header-legend { font-size: 7.5pt; letter-spacing: 0; }
+    .th-normal { font-weight: normal; }
 }
 
 /* --- MEDIA QUERIES APPLICATIFS (hors impression) --- */
