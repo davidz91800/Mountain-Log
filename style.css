@@ -847,10 +847,14 @@ tr.has-override td { background-color: inherit; }
     .waypoint-identifier { font-weight: bold; font-size: 10.5pt; color: #2980b9; }
 
     .data-value { font-family: 'Courier New', Courier, monospace; font-size: 10pt; }
-    /* L'altitude indiquée doit ressortir davantage que l'altitude vraie sur le PDF. */
-    .alt-indicated-value { font-weight: bold; font-size: 12pt; color: #1a2a3a; }
-    .alt-true-value { font-size: 8.5pt; color: #95a5a6; }
+    /* Colonne d'altitude unique : indiquée (marquée) au-dessus, vraie en-dessous. */
+    .print-col-alt { white-space: nowrap; }
+    .alt-indicated-value { font-family: 'Courier New', Courier, monospace; font-weight: bold; font-size: 12pt; color: #1a2a3a; }
+    .alt-true-value { font-family: 'Courier New', Courier, monospace; font-size: 8.5pt; color: #95a5a6; margin-top: 2px; }
+    /* La colonne commentaires occupe toute la largeur restante. */
+    .print-col-coords { white-space: nowrap; }
     .print-col-comment {
+        width: 100%;
         white-space: pre-wrap;
         font-family: 'Courier New', Courier, monospace;
         font-size: 8pt;

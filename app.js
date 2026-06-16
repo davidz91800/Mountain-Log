@@ -835,9 +835,8 @@ function handlePrint(clickedButton) {
                 <tr>
                     <th class="print-col-num">#</th>
                     <th class="print-col-wp">Waypoint</th>
-                    <th class="print-col-coords">Coordonnées</th>
-                    ${printTrue ? '<th class="print-col-alt">Alt. Vraie</th>' : ''}
-                    ${printIndicated ? '<th class="print-col-alt">Alt. Indiquée</th>' : ''}
+                    <th class="print-col-coords">Coord.</th>
+                    ${(printIndicated || printTrue) ? '<th class="print-col-alt">Altitude</th>' : ''}
                     <th class="print-col-comment">Commentaires</th>
                 </tr>
             </thead>
@@ -857,7 +856,12 @@ function handlePrint(clickedButton) {
                     <span>${distance.toFixed(2)} NM</span>
                 </div>`;
         }
-        
+
+        // Altitudes empilées dans une seule colonne : indiquée (marquée) au-dessus, vraie en-dessous.
+        const indicatedAltHtml = printIndicated ? `<div class="alt-indicated-value">≈ ${indicatedAltitude.toLocaleString('fr-FR')} ft</div>` : '';
+        const trueAltHtml = printTrue ? `<div class="alt-true-value">${wp.altFeet.toLocaleString('fr-FR')} ft</div>` : '';
+        const altCellHtml = (printIndicated || printTrue) ? `<td class="print-col-alt">${indicatedAltHtml}${trueAltHtml}</td>` : '';
+
         printHtml += `
             <tr class="waypoint-data-row">
                 <td class="print-col-num">${index + 1}</td>
@@ -865,9 +869,8 @@ function handlePrint(clickedButton) {
                     ${legInfoHtml}
                     <span class="waypoint-identifier">${wp.identifier}</span>
                 </td>
-                <td class="print-col-coords">${ddmCoords}</td>
-                ${printTrue ? `<td class="print-col-alt data-value alt-true-value">${wp.altFeet.toLocaleString('fr-FR')} ft</td>` : ''}
-                ${printIndicated ? `<td class="print-col-alt data-value alt-indicated-value">≈ ${indicatedAltitude.toLocaleString('fr-FR')} ft</td>` : ''}
+                <td class="print-col-coords">${ddmCoords.replace(' ', '<br>')}</td>
+                ${altCellHtml}
                 <td class="print-col-comment">${(wp.comment || '').replace(/</g, '<').replace(/>/g, '>')}</td>
             </tr>
         `;

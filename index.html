@@ -46,7 +46,9 @@
         <div class="upload-section">
             <div class="file-upload-wrapper">
                 <span class="btn">Choisir un fichier (.fpl, .json)</span>
-                <input type="file" id="fileInput" accept=".fpl, .xml, .json">
+                <!-- Pas d'attribut accept : iOS grise les .fpl (type inconnu) si aucune app
+                     ne déclare ce type. Le contenu est validé à l'import (fileHandlers.js). -->
+                <input type="file" id="fileInput">
             </div>
             <div class="upload-divider"><span>ou</span></div>
             <button id="create-new-log-btn" class="btn btn-secondary" type="button">✏️ Créer un nouveau log</button>
