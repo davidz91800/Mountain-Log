@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fpl-editor-v3'; // IMPORTANT : J'incrémente la version à v3
+const CACHE_NAME = 'fpl-editor-v4'; // IMPORTANT : incrémenter à chaque modif des fichiers en cache
 const urlsToCache = [
   '/',
   'index.html',
@@ -7,6 +7,10 @@ const urlsToCache = [
   'geoUtils.js',
   'generators.js',
   'fileHandlers.js',
+  'lz-string.min.js',
+  'qrcode.min.js',
+  'logo.png',
+  'manifest.json',
   'icon-192x192.png',
   'icon-512x512.png'
 ];

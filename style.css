@@ -365,6 +365,30 @@ select:focus-visible, textarea:focus-visible {
 .upload-divider { display: flex; align-items: center; gap: 12px; max-width: 320px; margin: 18px auto; color: var(--text-muted); font-size: 0.9em; }
 .upload-divider::before, .upload-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
+.add-waypoint-bar { text-align: center; margin-top: 14px; }
+.empty-log-message { text-align: center; color: var(--text-muted); padding: 32px 16px; font-style: italic; }
+
+/* --- PARTAGE DU LOG (modale) --- */
+.share-actions { margin-bottom: 6px; }
+.share-qr-wrapper { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 22px 0 16px; }
+.share-qr { width: 220px; max-width: 70vw; padding: 12px; background: #ffffff; border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+.share-qr svg { width: 100%; height: auto; display: block; }
+.share-qr.qr-error { padding: 16px; background: var(--danger-soft); color: var(--danger); box-shadow: none; font-size: 0.9em; }
+.share-qr-hint { font-size: 0.8em; color: var(--text-muted); }
+.share-link-row { display: flex; gap: 8px; align-items: center; }
+.share-link-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--text-soft);
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+.share-link-row .btn { margin: 0; flex-shrink: 0; }
+
 .action-bar { text-align: center; margin-top: 26px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; }
 #top-action-bar {
     margin-top: 0;

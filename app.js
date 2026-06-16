@@ -69,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('fileInput').addEventListener('change', handleFileSelect);
     // Création d'un nouveau log + édition du nom du plan
     document.getElementById('create-new-log-btn').addEventListener('click', handleCreateNewLog);
+    document.getElementById('add-waypoint-end-btn').addEventListener('click', handleAddWaypointAtEnd);
     document.getElementById('route-name-input').addEventListener('input', (e) => { flightData.routeName = e.target.value; });
     
     // Listeners pour les paramètres globaux
@@ -98,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.target.matches('.generate-fpl-btn')) handleGenerateFPL();
         if (event.target.matches('.generate-kml-btn')) handleGenerateKML();
         if (event.target.matches('.generate-crd-btn')) handleGenerateCRD();
+        if (event.target.matches('.share-log-btn')) handleShareLog();
         if (event.target.matches('.print-btn')) handlePrint(event.target);
     });
     
@@ -131,6 +133,14 @@ document.addEventListener('DOMContentLoaded', () => {
     dzModal.addEventListener('click', (e) => {
         if (e.target === dzModal) dzModal.style.display = 'none';
     });
+
+    // Gestionnaires pour la modale de partage
+    const shareModal = document.getElementById('share-options-modal');
+    document.getElementById('share-modal-close').addEventListener('click', () => shareModal.style.display = 'none');
+    shareModal.addEventListener('click', (e) => { if (e.target === shareModal) shareModal.style.display = 'none'; });
+    document.getElementById('share-file-btn').addEventListener('click', shareLogFile);
+    document.getElementById('share-link-btn').addEventListener('click', shareLogLink);
+    document.getElementById('copy-link-btn').addEventListener('click', copyShareLink);
     
     // Listeners pour Open-Meteo
     const forecastDateTimeInput = document.getElementById('forecast-datetime');
@@ -153,6 +163,9 @@ document.addEventListener('DOMContentLoaded', () => {
     logBody.addEventListener('dragleave', handleDragLeave);
     logBody.addEventListener('drop', handleDrop);
     logBody.addEventListener('dragend', handleDragEnd);
+
+    // Charge automatiquement un log reçu via un lien / QR code (#log=...)
+    loadSharedLogFromHash();
 });
 
 
@@ -267,6 +280,14 @@ function populateLogTable() {
         }
     });
 
+    if (flightData.waypoints.length === 0) {
+        const emptyRow = logBody.insertRow();
+        const cell = emptyRow.insertCell();
+        cell.colSpan = 6;
+        cell.className = 'empty-log-message';
+        cell.textContent = 'Aucun waypoint pour le moment. Cliquez sur « + Ajouter un waypoint » ci-dessous pour commencer.';
+    }
+
     setTimeout(() => {
         document.querySelectorAll('.comment-textarea').forEach(autosizeTextarea);
     }, 0);
@@ -355,17 +376,27 @@ function handleCreateNewLog() {
     }
     globalIsaDeviation = parseFloat(document.getElementById('global-isa-input').value) || 0;
     newPointCounter = 1;
-    flightData = {
-        routeName: '',
-        waypoints: [
-            { identifier: 'WPT1', type: 'USER WAYPOINT', lat: 45.50, lon: 6.00, altFeet: 0, comment: '' },
-            { identifier: 'WPT2', type: 'USER WAYPOINT', lat: 45.70, lon: 6.30, altFeet: 0, comment: '' }
-        ]
-    };
+    flightData = { routeName: '', waypoints: [] };
     showEditor();
     const routeInput = document.getElementById('route-name-input');
     if (routeInput) routeInput.focus();
     document.getElementById('log-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Ajoute un waypoint à la fin du plan (fonctionne même sur un log vide)
+function handleAddWaypointAtEnd() {
+    const wps = flightData.waypoints;
+    const last = wps[wps.length - 1];
+    wps.push({
+        identifier: `WPT${newPointCounter++}`,
+        type: 'USER WAYPOINT',
+        lat: last ? +(last.lat + 0.05).toFixed(5) : 45.50,
+        lon: last ? +(last.lon + 0.05).toFixed(5) : 6.00,
+        altFeet: last ? last.altFeet : 0,
+        comment: ''
+    });
+    populateLogTable();
+    checkAndDisplayDuplicateWarnings();
 }
 
 function handleGlobalIsaChange(event) {
@@ -452,7 +483,6 @@ function handleTableInput(event) {
 
 function handleDeleteWaypoint(button) {
     const index = parseInt(button.dataset.index, 10), waypointIdentifier = flightData.waypoints[index].identifier;
-    if (flightData.waypoints.length <= 2) { alert("Impossible de supprimer. Un plan de vol doit contenir au moins 2 points."); return; }
     if (window.confirm(`Êtes-vous sûr de vouloir supprimer le waypoint "${waypointIdentifier}" ?`)) {
         flightData.waypoints.splice(index, 1);
         populateLogTable();
@@ -523,6 +553,15 @@ function handleEditClick(button) {
     }
 }
 
+// Garde-fou : certains exports exigent un minimum de waypoints
+function ensureMinWaypoints(min) {
+    if (flightData.waypoints.length < min) {
+        alert(`Le plan de vol doit contenir au moins ${min} waypoints pour cet export.`);
+        return false;
+    }
+    return true;
+}
+
 function handleGenerateJSON() {
     const jsonContent = generateJSON(flightData, globalIsaDeviation);
     const fileName = `${flightData.routeName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
@@ -530,6 +569,7 @@ function handleGenerateJSON() {
 }
 
 function handleGenerateCRD() {
+    if (!ensureMinWaypoints(2)) return;
     const firstWp = flightData.waypoints[0], lastWp = flightData.waypoints[flightData.waypoints.length - 1];
     if (!/^[A-Z]{4}$/i.test(firstWp.identifier) || !/^[A-Z]{4}$/i.test(lastWp.identifier)) {
         alert(`Erreur CRD : Le premier et le dernier waypoint doivent être des codes OACI de 4 lettres.`); return;
@@ -540,6 +580,7 @@ function handleGenerateCRD() {
 }
 
 function handleGenerateKML() {
+    if (!ensureMinWaypoints(2)) return;
     const kmlContent = generateKML(flightData.routeName, flightData.waypoints);
     const fileName = `${flightData.routeName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.kml`;
     createDownloadLink(kmlContent, fileName, 'application/vnd.google-earth.kml+xml');
@@ -548,6 +589,7 @@ function handleGenerateKML() {
 // --- GESTION DES EXPORTS FPL VIA MODALE ---
 
 function handleGenerateFPL() {
+    if (!ensureMinWaypoints(2)) return;
     document.getElementById('fpl-options-modal').style.display = 'flex';
 }
 
@@ -577,6 +619,113 @@ function generateFplWithAltitudesInName() {
     const fileName = `${flightData.routeName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_altitudes.fpl`;
     createDownloadLink(fplContent, fileName, 'application/xml');
     document.getElementById('fpl-options-modal').style.display = 'none';
+}
+
+// =================================================================================
+// PARTAGE DU LOG (Web Share / AirDrop, lien auto-chargé, QR code)
+// =================================================================================
+
+// Données compactes du log pour l'encodage dans une URL / un QR code
+function getShareableData() {
+    const waypoints = flightData.waypoints.map(({ isaDeviationC, ...rest }) => rest);
+    return { routeName: flightData.routeName, waypoints, globalIsaDeviation };
+}
+
+function buildShareUrl() {
+    const encoded = LZString.compressToEncodedURIComponent(JSON.stringify(getShareableData()));
+    return location.origin + location.pathname + '#log=' + encoded;
+}
+
+function handleShareLog() {
+    if (flightData.waypoints.length === 0) {
+        alert("Ajoutez au moins un waypoint avant de partager le log.");
+        return;
+    }
+    const url = buildShareUrl();
+    const input = document.getElementById('share-link-input');
+    if (input) input.value = url;
+    const copyBtn = document.getElementById('copy-link-btn');
+    if (copyBtn) copyBtn.textContent = 'Copier';
+    renderQrCode(url);
+    document.getElementById('share-options-modal').style.display = 'flex';
+}
+
+// Partage le fichier .json via la feuille de partage iOS (AirDrop). Repli : téléchargement.
+function shareLogFile() {
+    const json = generateJSON(flightData, globalIsaDeviation);
+    const fileName = (flightData.routeName.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'plan') + '.json';
+    const file = new File([json], fileName, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'Mountain Log', text: flightData.routeName || 'Plan de vol' })
+            .catch(err => { if (err && err.name !== 'AbortError') console.error('Partage fichier échoué :', err); });
+    } else {
+        createDownloadLink(json, fileName, 'application/json');
+        document.getElementById('share-options-modal').style.display = 'none';
+        alert("Le partage direct n'est pas disponible ici. Le fichier a été préparé : utilise « Télécharger » puis AirDrop depuis l'app Fichiers.");
+    }
+}
+
+// Partage le lien (qui charge le plan automatiquement à l'ouverture). Repli : copie.
+function shareLogLink() {
+    const url = buildShareUrl();
+    if (navigator.share) {
+        navigator.share({ title: 'Mountain Log', text: flightData.routeName || 'Plan de vol', url })
+            .catch(err => { if (err && err.name !== 'AbortError') console.error('Partage lien échoué :', err); });
+    } else {
+        copyShareLink();
+    }
+}
+
+function copyShareLink() {
+    const input = document.getElementById('share-link-input');
+    const url = input ? input.value : buildShareUrl();
+    const btn = document.getElementById('copy-link-btn');
+    const done = () => { if (btn) { btn.textContent = 'Copié ✓'; setTimeout(() => { btn.textContent = 'Copier'; }, 1500); } };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(() => { if (input) { input.select(); document.execCommand('copy'); done(); } });
+    } else if (input) {
+        input.select();
+        document.execCommand('copy');
+        done();
+    }
+}
+
+// Génère le QR code (SVG) à partir du lien de partage
+function renderQrCode(text) {
+    const container = document.getElementById('share-qr');
+    if (!container) return;
+    container.innerHTML = '';
+    container.classList.remove('qr-error');
+    try {
+        const qr = qrcode(0, 'L'); // type auto, correction d'erreur L (capacité maximale)
+        qr.addData(text);
+        qr.make();
+        container.innerHTML = qr.createSvgTag({ scalable: true, margin: 2 });
+    } catch (e) {
+        container.classList.add('qr-error');
+        container.textContent = 'Plan trop volumineux pour un QR code — utilise « Partager le fichier » ou « Partager le lien ».';
+    }
+}
+
+// Charge automatiquement un log encodé dans l'URL (#log=...) au démarrage
+function loadSharedLogFromHash() {
+    const match = (location.hash || '').match(/log=([^&]+)/);
+    if (!match) return;
+    try {
+        const json = LZString.decompressFromEncodedURIComponent(match[1]);
+        const data = JSON.parse(json);
+        if (!data || !Array.isArray(data.waypoints)) throw new Error('Données invalides');
+        flightData = { routeName: data.routeName || '', waypoints: data.waypoints };
+        flightData.waypoints.forEach(wp => { wp.comment = wp.comment || ''; });
+        globalIsaDeviation = data.globalIsaDeviation ?? 0;
+        newPointCounter = 1;
+        showEditor();
+        // Nettoie l'URL pour éviter un rechargement involontaire du même plan
+        history.replaceState(null, '', location.pathname + location.search);
+    } catch (e) {
+        console.error('Lien de log invalide :', e);
+        alert("Le lien de partage est invalide ou corrompu.");
+    }
 }
 
 // =================================================================================
