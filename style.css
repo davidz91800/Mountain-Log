@@ -389,6 +389,45 @@ select:focus-visible, textarea:focus-visible {
 }
 .share-link-row .btn { margin: 0; flex-shrink: 0; }
 
+/* --- ÉDITION DU COMMENTAIRE (aperçu cellule + grande fenêtre) --- */
+.comment-cell { cursor: pointer; }
+.comment-cell .comment-textarea { pointer-events: none; cursor: pointer; max-height: 90px; overflow: hidden; }
+.comment-cell:hover .comment-textarea { border-color: var(--primary); }
+
+.comment-modal-content {
+    max-width: 720px;
+    display: flex;
+    flex-direction: column;
+    max-height: 88vh;
+    text-align: left;
+}
+.comment-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+.comment-modal-header h3 { margin: 0; flex: 1; text-align: center; font-size: 1.1em; }
+.comment-modal-header .btn { margin: 0; flex-shrink: 0; }
+.comment-modal-textarea {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 320px;
+    padding: 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 16px; /* >= 16px : évite le zoom automatique sur iOS au focus */
+    line-height: 1.5;
+    resize: none;
+    user-select: text;
+    -webkit-user-select: text;
+}
+.comment-modal-textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--ring); }
+
 .action-bar { text-align: center; margin-top: 26px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; }
 #top-action-bar {
     margin-top: 0;

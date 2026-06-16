@@ -14,6 +14,7 @@ let lastWeatherAverages = null; // Pour stocker les données météo pour l'impr
 let navStartTime = '08:00';
 let avgGroundSpeed = 180;
 let currentlyEditingDzIndex = -1; // Pour savoir quel WP on modifie
+let currentlyEditingCommentIndex = -1; // WP dont on édite le commentaire (grande fenêtre)
 
 
 // Register Service Worker
@@ -141,6 +142,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('share-file-btn').addEventListener('click', shareLogFile);
     document.getElementById('share-link-btn').addEventListener('click', shareLogLink);
     document.getElementById('copy-link-btn').addEventListener('click', copyShareLink);
+
+    // Gestionnaires pour la grande fenêtre d'édition de commentaire
+    document.getElementById('comment-save-btn').addEventListener('click', saveCommentEditor);
+    document.getElementById('comment-cancel-btn').addEventListener('click', closeCommentEditor);
     
     // Listeners pour Open-Meteo
     const forecastDateTimeInput = document.getElementById('forecast-datetime');
@@ -200,7 +205,7 @@ function populateLogTable() {
         
         const ddmCoords = decimalToDDM(wp.lat, wp.lon);
 
-        // Le commentaire est éditable directement ; la modale DZ y ajoute son bloc en plus
+        // Aperçu du commentaire (lecture seule) ; toucher la cellule ouvre la grande fenêtre d'édition
         row.innerHTML = `
             <td class="drag-handle" title="Glisser pour réorganiser"><span>${index + 1}</span><span class="drag-icon">☰</span></td>
             <td class="editable-cell">
@@ -226,7 +231,9 @@ function populateLogTable() {
                     </div>
                 </div>
             </td>
-            <td><textarea class="comment-textarea" data-index="${index}" rows="1" placeholder="Commentaire…">${wp.comment || ''}</textarea></td>
+            <td class="comment-cell" data-index="${index}" title="Toucher pour éditer le commentaire">
+                <textarea class="comment-textarea" rows="1" readonly placeholder="Commentaire…">${wp.comment || ''}</textarea>
+            </td>
             <td>
                 <button class="add-dz-btn" data-index="${index}">Drop Zone</button>
                 <button class="delete-btn delete-wp-btn" data-index="${index}">Supprimer</button>
@@ -458,6 +465,7 @@ function handleLogTableClick(event) {
     const saveManualButton = target.closest('.save-manual-wp-btn');
     const cancelManualButton = target.closest('.cancel-manual-wp-btn');
     const dzButton = target.closest('.add-dz-btn');
+    const commentCell = target.closest('.comment-cell');
 
     if (editButton) handleEditClick(editButton);
     else if (addButton) handleAddPointAtDistance(addButton);
@@ -466,6 +474,7 @@ function handleLogTableClick(event) {
     else if (saveManualButton) handleManualAddWaypoint(saveManualButton);
     else if (dzButton) handleDzButtonClick(dzButton);
     else if (cancelManualButton) hideManualAddForm(cancelManualButton);
+    else if (commentCell) openCommentEditor(commentCell.dataset.index);
 }
 
 function handleTableInput(event) {
@@ -479,11 +488,36 @@ function handleTableInput(event) {
         flightData.waypoints[index].altFeet = parseFloat(target.value) || 0;
         updateIndicatedAltitudeForRow(row, index);
     }
+}
 
-    if (target.classList.contains('comment-textarea')) {
-        flightData.waypoints[index].comment = target.value;
-        autosizeTextarea(target);
-    }
+// --- ÉDITION DU COMMENTAIRE DANS UNE GRANDE FENÊTRE ---
+function openCommentEditor(index) {
+    index = parseInt(index, 10);
+    if (!flightData.waypoints[index]) return;
+    currentlyEditingCommentIndex = index;
+    const wp = flightData.waypoints[index];
+    document.getElementById('comment-modal-title').textContent = `Commentaire — ${wp.identifier}`;
+    const ta = document.getElementById('comment-modal-textarea');
+    ta.value = wp.comment || '';
+    document.getElementById('comment-edit-modal').style.display = 'flex';
+    // Focus différé pour que le clavier s'ouvre une fois la fenêtre affichée
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 60);
+}
+
+function saveCommentEditor() {
+    if (currentlyEditingCommentIndex < 0) return;
+    const idx = currentlyEditingCommentIndex;
+    const ta = document.getElementById('comment-modal-textarea');
+    flightData.waypoints[idx].comment = ta.value;
+    // Met à jour l'aperçu de la cellule sans tout reconstruire (préserve la météo, etc.)
+    const cellTa = document.querySelector(`.comment-cell[data-index="${idx}"] .comment-textarea`);
+    if (cellTa) { cellTa.value = ta.value; autosizeTextarea(cellTa); }
+    closeCommentEditor();
+}
+
+function closeCommentEditor() {
+    document.getElementById('comment-edit-modal').style.display = 'none';
+    currentlyEditingCommentIndex = -1;
 }
 
 function handleDeleteWaypoint(button) {

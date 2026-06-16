@@ -314,6 +314,18 @@
         </div>
     </div>
 
+    <!-- NOUVEAU : Grande fenêtre d'édition du commentaire -->
+    <div id="comment-edit-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content comment-modal-content">
+            <div class="comment-modal-header">
+                <button id="comment-cancel-btn" class="btn btn-secondary btn-sm" type="button">Annuler</button>
+                <h3 id="comment-modal-title">Commentaire</h3>
+                <button id="comment-save-btn" class="btn btn-success btn-sm" type="button">Valider</button>
+            </div>
+            <textarea id="comment-modal-textarea" class="comment-modal-textarea" placeholder="Saisis ton commentaire…"></textarea>
+        </div>
+    </div>
+
     <!-- Conteneur pour le contenu à imprimer (masqué par défaut) -->
     <div id="print-content" style="display: none;"></div>
 
