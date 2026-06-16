@@ -200,7 +200,7 @@ function populateLogTable() {
         
         const ddmCoords = decimalToDDM(wp.lat, wp.lon);
 
-        // Rendre le textarea readonly, car il est maintenant géré par la modale DZ
+        // Le commentaire est éditable directement ; la modale DZ y ajoute son bloc en plus
         row.innerHTML = `
             <td class="drag-handle" title="Glisser pour réorganiser"><span>${index + 1}</span><span class="drag-icon">☰</span></td>
             <td class="editable-cell">
@@ -226,7 +226,7 @@ function populateLogTable() {
                     </div>
                 </div>
             </td>
-            <td><textarea class="comment-textarea" data-index="${index}" rows="1" readonly>${wp.comment || ''}</textarea></td>
+            <td><textarea class="comment-textarea" data-index="${index}" rows="1" placeholder="Commentaire…">${wp.comment || ''}</textarea></td>
             <td>
                 <button class="add-dz-btn" data-index="${index}">Drop Zone</button>
                 <button class="delete-btn delete-wp-btn" data-index="${index}">Supprimer</button>
@@ -478,6 +478,11 @@ function handleTableInput(event) {
     if (target.classList.contains('altitude-input')) {
         flightData.waypoints[index].altFeet = parseFloat(target.value) || 0;
         updateIndicatedAltitudeForRow(row, index);
+    }
+
+    if (target.classList.contains('comment-textarea')) {
+        flightData.waypoints[index].comment = target.value;
+        autosizeTextarea(target);
     }
 }
 
