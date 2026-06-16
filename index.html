@@ -7,9 +7,22 @@
     
     <!-- PWA Manifest & Theme -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#007bff">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="color-scheme" content="light dark">
     <link rel="apple-touch-icon" href="icon-192x192.png">
     <link rel="icon" href="logo.png" type="image/png"> <!-- Favicon avec le logo -->
+
+    <!-- Applique le thème enregistré avant le rendu pour éviter tout clignotement -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('mountainlog-theme');
+          if (t === 'dark' || t === 'light') {
+            document.documentElement.setAttribute('data-theme', t);
+          }
+        } catch (e) {}
+      })();
+    </script>
 
     <!-- Stylesheet -->
     <link rel="stylesheet" href="style.css">
@@ -17,6 +30,7 @@
 <body>
 
     <div class="container">
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Basculer le thème clair / sombre" title="Thème clair / sombre">🌙</button>
         <!-- EN-TÊTE CENTRÉ (MODIFIÉ) -->
         <header class="app-header">
             <img src="logo.png" alt="Logo de Mountain Log" class="header-logo">
@@ -28,6 +42,8 @@
                 <span class="btn">Choisir un fichier (.fpl, .json)</span>
                 <input type="file" id="fileInput" accept=".fpl, .xml, .json">
             </div>
+            <div class="upload-divider"><span>ou</span></div>
+            <button id="create-new-log-btn" class="btn btn-secondary" type="button">✏️ Créer un nouveau log</button>
         </div>
 
         <!-- NOUVEL ENCART MÉTÉO (version Open-Meteo) -->
@@ -55,6 +71,10 @@
             <div class="global-settings-section">
                 <h2>Paramètres Généraux</h2>
                 <div class="settings-grid">
+                    <div class="form-group full-width route-name-group">
+                        <label for="route-name-input">Nom du plan :</label>
+                        <input type="text" id="route-name-input" class="route-name-input" placeholder="Ex : Vol Annecy → Chambéry">
+                    </div>
                     <div class="form-group">
                         <label for="global-isa-input">Écart ISA global :</label>
                         <div class="param-input-wrapper">

@@ -89,11 +89,6 @@ function processFlightPlan(fileContent, fileName) {
         flightData.waypoints = orderedWaypoints;
     }
 
-    // Code commun après le parsing
-    document.getElementById('global-isa-input').value = globalIsaDeviation;
-    populateLogTable();
-    checkAndDisplayDuplicateWarnings();
-    document.getElementById('log-container').style.display = 'block';
-    document.querySelector('.global-settings-section').style.display = 'block';
-    document.getElementById('download-container').style.display = 'none';
+    // Code commun après le parsing (affichage de l'éditeur)
+    showEditor();
 }

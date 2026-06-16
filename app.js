@@ -33,12 +33,43 @@ if ('serviceWorker' in navigator) {
     });
 }
 
+// --- GESTION DU THÈME (clair / sombre) ---
+function getResolvedTheme() {
+    const explicit = document.documentElement.getAttribute('data-theme');
+    if (explicit === 'dark' || explicit === 'light') return explicit;
+    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+}
+
+function updateThemeUI(theme) {
+    const btn = document.getElementById('theme-toggle');
+    if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0f1626' : '#2563eb');
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    try { localStorage.setItem('mountainlog-theme', theme); } catch (e) {}
+    updateThemeUI(theme);
+}
+
+function toggleTheme() {
+    applyTheme(getResolvedTheme() === 'dark' ? 'light' : 'dark');
+}
+
 // --- EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
     const logBody = document.getElementById('log-body');
 
+    // Thème : initialise l'icône et branche le bouton de bascule
+    updateThemeUI(getResolvedTheme());
+    document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+
     // Listener de fichier
     document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+    // Création d'un nouveau log + édition du nom du plan
+    document.getElementById('create-new-log-btn').addEventListener('click', handleCreateNewLog);
+    document.getElementById('route-name-input').addEventListener('input', (e) => { flightData.routeName = e.target.value; });
     
     // Listeners pour les paramètres globaux
     document.getElementById('global-isa-input').addEventListener('input', handleGlobalIsaChange);
@@ -303,6 +334,40 @@ function createDownloadLink(content, fileName, mimeType) {
 }
 
 // --- EVENT HANDLERS ---
+
+// Affiche l'éditeur (paramètres + table) — commun à l'import de fichier et à la création
+function showEditor() {
+    document.getElementById('global-isa-input').value = globalIsaDeviation;
+    const routeInput = document.getElementById('route-name-input');
+    if (routeInput) routeInput.value = flightData.routeName || '';
+    populateLogTable();
+    checkAndDisplayDuplicateWarnings();
+    document.getElementById('log-container').style.display = 'block';
+    document.querySelector('.global-settings-section').style.display = 'block';
+    document.getElementById('download-container').style.display = 'none';
+}
+
+// Crée un nouveau log vierge : deux waypoints de départ, prêts à être édités/renommés
+function handleCreateNewLog() {
+    if (flightData.waypoints.length > 0 &&
+        !window.confirm("Créer un nouveau log ? Le plan de vol actuel sera remplacé.")) {
+        return;
+    }
+    globalIsaDeviation = parseFloat(document.getElementById('global-isa-input').value) || 0;
+    newPointCounter = 1;
+    flightData = {
+        routeName: '',
+        waypoints: [
+            { identifier: 'WPT1', type: 'USER WAYPOINT', lat: 45.50, lon: 6.00, altFeet: 0, comment: '' },
+            { identifier: 'WPT2', type: 'USER WAYPOINT', lat: 45.70, lon: 6.30, altFeet: 0, comment: '' }
+        ]
+    };
+    showEditor();
+    const routeInput = document.getElementById('route-name-input');
+    if (routeInput) routeInput.focus();
+    document.getElementById('log-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function handleGlobalIsaChange(event) {
     globalIsaDeviation = parseFloat(event.target.value) || 0;
     updateAllIndicatedAltitudes();
