@@ -620,7 +620,7 @@ function handleGenerateCRD() {
 
 function handleGenerateKML() {
     if (!ensureMinWaypoints(2)) return;
-    const kmlContent = generateKML(flightData.routeName, flightData.waypoints);
+    const kmlContent = generateKML(flightData.routeName, flightData.waypoints, globalIsaDeviation);
     const fileName = `${flightData.routeName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.kml`;
     createDownloadLink(kmlContent, fileName, 'application/vnd.google-earth.kml+xml');
 }
@@ -866,8 +866,8 @@ function handlePrint(clickedButton) {
                     <span class="waypoint-identifier">${wp.identifier}</span>
                 </td>
                 <td class="print-col-coords">${ddmCoords}</td>
-                ${printTrue ? `<td class="print-col-alt data-value">${wp.altFeet.toLocaleString('fr-FR')} ft</td>` : ''}
-                ${printIndicated ? `<td class="print-col-alt data-value">≈ ${indicatedAltitude.toLocaleString('fr-FR')} ft</td>` : ''}
+                ${printTrue ? `<td class="print-col-alt data-value alt-true-value">${wp.altFeet.toLocaleString('fr-FR')} ft</td>` : ''}
+                ${printIndicated ? `<td class="print-col-alt data-value alt-indicated-value">≈ ${indicatedAltitude.toLocaleString('fr-FR')} ft</td>` : ''}
                 <td class="print-col-comment">${(wp.comment || '').replace(/</g, '<').replace(/>/g, '>')}</td>
             </tr>
         `;

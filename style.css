@@ -847,6 +847,9 @@ tr.has-override td { background-color: inherit; }
     .waypoint-identifier { font-weight: bold; font-size: 10.5pt; color: #2980b9; }
 
     .data-value { font-family: 'Courier New', Courier, monospace; font-size: 10pt; }
+    /* L'altitude indiquée doit ressortir davantage que l'altitude vraie sur le PDF. */
+    .alt-indicated-value { font-weight: bold; font-size: 12pt; color: #1a2a3a; }
+    .alt-true-value { font-size: 8.5pt; color: #95a5a6; }
     .print-col-comment {
         white-space: pre-wrap;
         font-family: 'Courier New', Courier, monospace;

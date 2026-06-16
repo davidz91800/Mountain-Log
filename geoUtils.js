@@ -66,9 +66,10 @@ function calculateIndicatedAltitude(trueAltitudeFt, isaDeviationC = 0) {
 
     // Formule inversée : H_indiquée = H_vraie * (T_ISA / T_air)
     const indicatedAltitude = (t_air_at_true_alt_k > 0) ? (trueAltitudeFt * (t_isa_at_true_alt_k / t_air_at_true_alt_k)) : trueAltitudeFt;
-    
+
     return {
-        indicatedAltitude: Math.round(indicatedAltitude),
+        // Les altitudes indiquées sont arrondies à la centaine de pieds.
+        indicatedAltitude: Math.round(indicatedAltitude / 100) * 100,
         airTempC: t_air_at_true_alt_k - KELVIN_AT_ZERO_C
     };
 }
