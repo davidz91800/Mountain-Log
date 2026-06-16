@@ -3,9 +3,17 @@
 
 function generateFPL(name, waypoints) {
     const createdTime = new Date().toISOString();
-    const waypointTableXML = waypoints.map(wp => `\n    <waypoint>\n        <identifier>${wp.identifier}</identifier>\n        <type>${wp.type}</type>\n        <lat>${wp.lat}</lat>\n        <lon>${wp.lon}</lon>\n        <altitude-ft>${wp.altFeet > 0 ? wp.altFeet : ''}</altitude-ft>\n    </waypoint>`).join('');
-    const routePointsXML = waypoints.map(wp => `\n    <route-point>\n        <waypoint-identifier>${wp.identifier}</waypoint-identifier>\n        <waypoint-type>${wp.type}</waypoint-type>\n    </route-point>`).join('');
-    return `<?xml version="1.0" encoding="utf-8"?>\n<flight-plan xmlns="http://www8.garmin.com/xmlschemas/FlightPlan/v1">\n<created>${createdTime}</created>\n<waypoint-table>${waypointTableXML}\n</waypoint-table>\n<route>\n    <route-name>${name}</route-name>\n    <flight-plan-index>1</flight-plan-index>${routePointsXML}\n</route>\n</flight-plan>`;
+    const waypointTableXML = waypoints.map(wp => {
+        const identifier = escapeXml(wp.identifier);
+        const type = escapeXml(wp.type || 'USER WAYPOINT');
+        return `\n    <waypoint>\n        <identifier>${identifier}</identifier>\n        <type>${type}</type>\n        <lat>${wp.lat}</lat>\n        <lon>${wp.lon}</lon>\n        <altitude-ft>${wp.altFeet > 0 ? wp.altFeet : ''}</altitude-ft>\n    </waypoint>`;
+    }).join('');
+    const routePointsXML = waypoints.map(wp => {
+        const identifier = escapeXml(wp.identifier);
+        const type = escapeXml(wp.type || 'USER WAYPOINT');
+        return `\n    <route-point>\n        <waypoint-identifier>${identifier}</waypoint-identifier>\n        <waypoint-type>${type}</waypoint-type>\n    </route-point>`;
+    }).join('');
+    return `<?xml version="1.0" encoding="utf-8"?>\n<flight-plan xmlns="http://www8.garmin.com/xmlschemas/FlightPlan/v1">\n<created>${createdTime}</created>\n<waypoint-table>${waypointTableXML}\n</waypoint-table>\n<route>\n    <route-name>${escapeXml(name)}</route-name>\n    <flight-plan-index>1</flight-plan-index>${routePointsXML}\n</route>\n</flight-plan>`;
 }
 
 function generateKML(name, waypoints, isaDeviation = 0) {
@@ -17,13 +25,13 @@ function generateKML(name, waypoints, isaDeviation = 0) {
         let desc = `Altitude indiquée: <strong>${wp.indicatedAltFeet.toLocaleString('fr-FR')} ft</strong>`;
         desc += `<br>Altitude vraie: ${wp.altFeet > 0 ? wp.altFeet.toLocaleString('fr-FR') + ' ft' : 'Non spécifiée'}`;
         if (wp.comment) {
-            const safeComment = wp.comment.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/\n/g, '<br>');
+            const safeComment = escapeHtml(wp.comment).replace(/\n/g, '<br>');
             desc += `<br><hr style="margin: 5px 0;"><strong>Commentaire:</strong><br>${safeComment}`;
         }
-        return `<Placemark><name>${wp.identifier}/${wp.indicatedAltFeet}I</name><styleUrl>#waypointStyle</styleUrl><description><![CDATA[${desc}]]></description><Point><altitudeMode>absolute</altitudeMode><coordinates>${wp.lon},${wp.lat},${wp.altMeters}</coordinates></Point></Placemark>`;
+        return `<Placemark><name>${escapeXml(wp.identifier)}/${wp.indicatedAltFeet}I</name><styleUrl>#waypointStyle</styleUrl><description><![CDATA[${desc}]]></description><Point><altitudeMode>absolute</altitudeMode><coordinates>${wp.lon},${wp.lat},${wp.altMeters}</coordinates></Point></Placemark>`;
     }).join('');
     const coordsStr = updatedWaypoints.map(wp => `${wp.lon},${wp.lat},${wp.altMeters}`).join(' ');
-    return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${name}</name><Style id="flightPathStyle"><LineStyle><color>ff00ffff</color><width>9</width></LineStyle></Style><Style id="waypointStyle"><IconStyle><Icon><href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href></Icon><hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/></IconStyle><LabelStyle><scale>0.8</scale></LabelStyle></Style><Folder><name>Trace du vol</name><Placemark><name>${name}</name><styleUrl>#flightPathStyle</styleUrl><LineString><extrude>1</extrude><tessellate>1</tessellate><altitudeMode>absolute</altitudeMode><coordinates>${coordsStr}</coordinates></LineString></Placemark></Folder><Folder><name>Waypoints</name>${placemarksKML}</Folder></Document></kml>`;
+    return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${escapeXml(name)}</name><Style id="flightPathStyle"><LineStyle><color>ff00ffff</color><width>9</width></LineStyle></Style><Style id="waypointStyle"><IconStyle><Icon><href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href></Icon><hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/></IconStyle><LabelStyle><scale>0.8</scale></LabelStyle></Style><Folder><name>Trace du vol</name><Placemark><name>${escapeXml(name)}</name><styleUrl>#flightPathStyle</styleUrl><LineString><extrude>1</extrude><tessellate>1</tessellate><altitudeMode>absolute</altitudeMode><coordinates>${coordsStr}</coordinates></LineString></Placemark></Folder><Folder><name>Waypoints</name>${placemarksKML}</Folder></Document></kml>`;
 }
 
 function generateCRD(name, waypoints) {
@@ -31,7 +39,7 @@ function generateCRD(name, waypoints) {
 
     const pointListXML = waypoints.map((wp, index) => {
         const crdCoords = decimalToDDMMSS_CRD(wp.lat, wp.lon);
-        const description = wp.identifier; // Les exemples valides utilisent l'identifiant ici
+        const description = escapeXml(wp.identifier); // Les exemples valides utilisent l'identifiant ici
         const isAirport = isICAO(wp.identifier);
 
         let pointXML = `\n<POINT>\n<ID>${index + 1}</ID>`;
@@ -40,7 +48,7 @@ function generateCRD(name, waypoints) {
         }
         pointXML += `\n<DESCRIPTION>${description}</DESCRIPTION>\n<ELEVATION>\n<SOURCE>${isAirport ? 'DAFIF' : 'DTED'}</SOURCE>\n<VALUE>${wp.altFeet || 0}</VALUE>\n</ELEVATION>\n<INPUT_DATUM>WGE</INPUT_DATUM>\n<MAGNETIC_VARIATION>0.0</MAGNETIC_VARIATION>`;
         if (isAirport) {
-            pointXML += `\n<NAME>${wp.identifier.toUpperCase()}/A</NAME>`;
+            pointXML += `\n<NAME>${escapeXml(wp.identifier.toUpperCase())}/A</NAME>`;
         }
         pointXML += `\n<SOURCE>${isAirport ? 'AIRPORT' : 'USER'}</SOURCE>\n<WGS84_POSITION>\n<LATITUDE>${crdCoords.lat}</LATITUDE>\n<LONGITUDE>${crdCoords.lon}</LONGITUDE>\n</WGS84_POSITION>\n</POINT>`;
         return pointXML;
@@ -90,7 +98,7 @@ function generateCRD(name, waypoints) {
 <MISSION>
 <ROUTE_LIST>
 <ROUTE>
-<NAME>${name}</NAME>
+<NAME>${escapeXml(name)}</NAME>
 <ID>1</ID>
 <RECOVERY_FUEL>10000</RECOVERY_FUEL>
 <TIME_ZONE_DESIGNATION>+0.00</TIME_ZONE_DESIGNATION>

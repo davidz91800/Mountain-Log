@@ -204,24 +204,28 @@ function populateLogTable() {
         row.setAttribute('data-index', index);
         
         const ddmCoords = decimalToDDM(wp.lat, wp.lon);
+        const safeIdentifier = escapeHtml(wp.identifier);
+        const safeDdmCoords = escapeHtml(ddmCoords);
+        const safeAltitude = escapeHtml(wp.altFeet);
+        const safeComment = escapeHtml(wp.comment || '');
 
         // Aperçu du commentaire (lecture seule) ; toucher la cellule ouvre la grande fenêtre d'édition
         row.innerHTML = `
             <td class="drag-handle" title="Glisser pour réorganiser"><span>${index + 1}</span><span class="drag-icon">☰</span></td>
             <td class="editable-cell">
-                <span class="display-value">${wp.identifier}</span>
-                <input type="text" class="input-value" value="${wp.identifier}" style="display:none;">
+                <span class="display-value">${safeIdentifier}</span>
+                <input type="text" class="input-value" value="${safeIdentifier}" style="display:none;">
                 <button class="edit-btn edit-waypoint-btn" data-index="${index}">Modifier</button>
             </td>
             <td class="editable-cell">
-                <span class="display-value">${ddmCoords}</span>
-                <input type="text" class="input-value" value="${ddmCoords}" style="display:none;">
+                <span class="display-value">${safeDdmCoords}</span>
+                <input type="text" class="input-value" value="${safeDdmCoords}" style="display:none;">
                 <button class="edit-btn edit-coord-btn" data-index="${index}">Modifier</button>
             </td>
             <td>
                 <div class="altitude-cell-content">
                     <div class="true-altitude-wrapper">
-                        <input type="number" id="alt-input-${index}" class="altitude-input" data-index="${index}" value="${wp.altFeet}" step="100">
+                        <input type="number" id="alt-input-${index}" class="altitude-input" data-index="${index}" value="${safeAltitude}" step="100">
                         <span class="unit">ft</span>
                         <span class="label">(Vraie)</span>
                     </div>
@@ -232,7 +236,7 @@ function populateLogTable() {
                 </div>
             </td>
             <td class="comment-cell" data-index="${index}" title="Toucher pour éditer le commentaire">
-                <textarea class="comment-textarea" rows="1" readonly placeholder="Commentaire…">${wp.comment || ''}</textarea>
+                <textarea class="comment-textarea" rows="1" readonly placeholder="Commentaire…">${safeComment}</textarea>
             </td>
             <td>
                 <button class="add-dz-btn" data-index="${index}">Drop Zone</button>
@@ -332,9 +336,14 @@ function checkAndDisplayDuplicateWarnings() {
     const seen = new Set();
     const duplicates = new Set(identifiers.filter(id => seen.size === seen.add(id).size));
     const hasDuplicates = duplicates.size > 0;
-    const message = hasDuplicates ? `<strong>Attention :</strong> Identifiants dupliqués : ${Array.from(duplicates).join(', ')}.` : '';
+    const message = hasDuplicates ? `<strong>Attention :</strong> Identifiants dupliqués : ${Array.from(duplicates).map(escapeHtml).join(', ')}.` : '';
     const displayStyle = hasDuplicates ? 'block' : 'none';
     warningBanners.forEach(banner => { banner.innerHTML = message; banner.style.display = displayStyle; });
+}
+
+function getSafeFileBase(name, fallback = 'plan') {
+    const safeName = String(name || '').replace(/[^a-z0-9]/gi, '_').replace(/^_+|_+$/g, '').toLowerCase();
+    return safeName || fallback;
 }
 
 function createDownloadLink(content, fileName, mimeType) {
@@ -603,7 +612,7 @@ function ensureMinWaypoints(min) {
 
 function handleGenerateJSON() {
     const jsonContent = generateJSON(flightData, globalIsaDeviation);
-    const fileName = `${flightData.routeName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
+    const fileName = `${getSafeFileBase(flightData.routeName)}.json`;
     createDownloadLink(jsonContent, fileName, 'application/json');
 }
 
@@ -614,14 +623,14 @@ function handleGenerateCRD() {
         alert(`Erreur CRD : Le premier et le dernier waypoint doivent être des codes OACI de 4 lettres.`); return;
     }
     const crdContent = generateCRD(flightData.routeName, flightData.waypoints);
-    const fileName = `${flightData.routeName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.crd`;
+    const fileName = `${getSafeFileBase(flightData.routeName)}.crd`;
     createDownloadLink(crdContent, fileName, 'application/xml');
 }
 
 function handleGenerateKML() {
     if (!ensureMinWaypoints(2)) return;
     const kmlContent = generateKML(flightData.routeName, flightData.waypoints, globalIsaDeviation);
-    const fileName = `${flightData.routeName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.kml`;
+    const fileName = `${getSafeFileBase(flightData.routeName)}.kml`;
     createDownloadLink(kmlContent, fileName, 'application/vnd.google-earth.kml+xml');
 }
 
@@ -642,7 +651,7 @@ function prepareWaypointsForFplExport() {
 function generateFplStandard() {
     const waypointsForExport = prepareWaypointsForFplExport();
     const fplContent = generateFPL(flightData.routeName, waypointsForExport);
-    const fileName = `${flightData.routeName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.fpl`;
+    const fileName = `${getSafeFileBase(flightData.routeName)}.fpl`;
     createDownloadLink(fplContent, fileName, 'application/xml');
     document.getElementById('fpl-options-modal').style.display = 'none';
 }
@@ -655,7 +664,7 @@ function generateFplWithAltitudesInName() {
         return { ...wp, identifier: newIdentifier };
     });
     const fplContent = generateFPL(flightData.routeName, waypointsWithModifiedNames);
-    const fileName = `${flightData.routeName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_altitudes.fpl`;
+    const fileName = `${getSafeFileBase(flightData.routeName)}_altitudes.fpl`;
     createDownloadLink(fplContent, fileName, 'application/xml');
     document.getElementById('fpl-options-modal').style.display = 'none';
 }
@@ -692,7 +701,7 @@ function handleShareLog() {
 // Partage le fichier .json via la feuille de partage iOS (AirDrop). Repli : téléchargement.
 function shareLogFile() {
     const json = generateJSON(flightData, globalIsaDeviation);
-    const fileName = (flightData.routeName.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'plan') + '.json';
+    const fileName = getSafeFileBase(flightData.routeName) + '.json';
     const file = new File([json], fileName, { type: 'application/json' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
         navigator.share({ files: [file], title: 'Mountain Log', text: flightData.routeName || 'Plan de vol' })
@@ -856,6 +865,8 @@ function handlePrint(clickedButton) {
     flightData.waypoints.forEach((wp, index) => {
         const ddmCoords = decimalToDDM(wp.lat, wp.lon);
         const { indicatedAltitude } = calculateIndicatedAltitude(wp.altFeet, globalIsaDeviation);
+        const safeIdentifier = escapeHtml(wp.identifier);
+        const safeComment = escapeHtml(wp.comment || '').replace(/\n/g, '<br>');
         
         let legInfoHtml = '';
         if (index > 0) {
@@ -878,11 +889,11 @@ function handlePrint(clickedButton) {
                 <td class="print-col-num">${index + 1}</td>
                 <td class="print-col-wp waypoint-identifier-cell">
                     ${legInfoHtml}
-                    <span class="waypoint-identifier">${wp.identifier}</span>
+                    <span class="waypoint-identifier">${safeIdentifier}</span>
                 </td>
                 <td class="print-col-coords">${ddmCoords.replace(' ', '<br>')}</td>
                 ${altCellHtml}
-                <td class="print-col-comment">${(wp.comment || '').replace(/</g, '<').replace(/>/g, '>')}</td>
+                <td class="print-col-comment">${safeComment}</td>
             </tr>
         `;
     });

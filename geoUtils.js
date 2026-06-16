@@ -9,6 +9,39 @@ const KELVIN_AT_ZERO_C = 273.15;
 function toRad(deg) { return deg * Math.PI / 180; }
 function toDeg(rad) { return rad * 180 / Math.PI; }
 
+function escapeXml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
+function escapeHtml(value) {
+    return escapeXml(value);
+}
+
+function parseDDM(str) {
+    const regex = /([NS])\s*(\d{1,3})[^\d+-]*([\d.,]+)\s*([EW])\s*(\d{1,3})[^\d+-]*([\d.,]+)/i;
+    const match = String(str || '').match(regex);
+    if (!match) return null;
+
+    const latMinutes = parseFloat(match[3].replace(',', '.'));
+    const lonMinutes = parseFloat(match[6].replace(',', '.'));
+    if (!Number.isFinite(latMinutes) || !Number.isFinite(lonMinutes) || latMinutes >= 60 || lonMinutes >= 60) {
+        return null;
+    }
+
+    let lat = parseFloat(match[2]) + latMinutes / 60;
+    if (match[1].toUpperCase() === 'S') lat = -lat;
+
+    let lon = parseFloat(match[5]) + lonMinutes / 60;
+    if (match[4].toUpperCase() === 'W') lon = -lon;
+
+    return { lat, lon };
+}
+
 /**
  * Calcule l'altitude vraie à partir de l'altitude indiquée et de l'écart ISA.
  * Utile pour l'importation de fichiers FPL.
@@ -141,17 +174,6 @@ function decimalToDDMMSS_CRD(lat, lon) {
         return `${hemisphere}${degreesStr}${minutesStr}${secondsStr}`;
     };
     return { lat: formatPart(lat, true), lon: formatPart(lon, false) };
-}
-
-function parseDDM(str) { 
-    const regex = /([NS])\s*(\d{1,3})[°\s]+([\d.]+)\s*([EW])\s*(\d{1,3})[°\s]+([\d.]+)/i; 
-    const match = str.match(regex); 
-    if (!match) return null; 
-    let lat = parseFloat(match[2]) + parseFloat(match[3]) / 60; 
-    if (match[1].toUpperCase() === 'S') lat = -lat; 
-    let lon = parseFloat(match[5]) + parseFloat(match[6]) / 60; 
-    if (match[4].toUpperCase() === 'W') lon = -lon; 
-    return { lat, lon }; 
 }
 
 /**
