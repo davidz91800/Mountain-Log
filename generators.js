@@ -17,10 +17,14 @@ function generateFPL(name, waypoints) {
 }
 
 function generateKML(name, waypoints, isaDeviation = 0) {
-    const updatedWaypoints = waypoints.map(wp => {
-        const { indicatedAltitude } = calculateIndicatedAltitude(wp.altFeet, isaDeviation);
-        return { ...wp, altMeters: wp.altFeet * FEET_TO_METERS, indicatedAltFeet: indicatedAltitude };
-    });
+    const updatedWaypoints = waypoints
+        .map(normalizeWaypointCoordinates)
+        .filter(wp => isValidLatLon(wp.lat, wp.lon))
+        .map(wp => {
+            const trueAltitudeFeet = Number(wp.altFeet) || 0;
+            const { indicatedAltitude } = calculateIndicatedAltitude(trueAltitudeFeet, isaDeviation);
+            return { ...wp, altFeet: trueAltitudeFeet, altMeters: trueAltitudeFeet * FEET_TO_METERS, indicatedAltFeet: indicatedAltitude };
+        });
     const placemarksKML = updatedWaypoints.map(wp => {
         let desc = `Altitude indiquée: <strong>${wp.indicatedAltFeet.toLocaleString('fr-FR')} ft</strong>`;
         desc += `<br>Altitude vraie: ${wp.altFeet > 0 ? wp.altFeet.toLocaleString('fr-FR') + ' ft' : 'Non spécifiée'}`;
@@ -28,9 +32,9 @@ function generateKML(name, waypoints, isaDeviation = 0) {
             const safeComment = escapeHtml(wp.comment).replace(/\n/g, '<br>');
             desc += `<br><hr style="margin: 5px 0;"><strong>Commentaire:</strong><br>${safeComment}`;
         }
-        return `<Placemark><name>${escapeXml(wp.identifier)}/${wp.indicatedAltFeet}I</name><styleUrl>#waypointStyle</styleUrl><description><![CDATA[${desc}]]></description><Point><altitudeMode>absolute</altitudeMode><coordinates>${wp.lon},${wp.lat},${wp.altMeters}</coordinates></Point></Placemark>`;
+        return `<Placemark><name>${escapeXml(wp.identifier)}/${wp.indicatedAltFeet}I</name><styleUrl>#waypointStyle</styleUrl><description><![CDATA[${desc}]]></description><Point><altitudeMode>absolute</altitudeMode><coordinates>${wp.lon.toFixed(8)},${wp.lat.toFixed(8)},${wp.altMeters.toFixed(1)}</coordinates></Point></Placemark>`;
     }).join('');
-    const coordsStr = updatedWaypoints.map(wp => `${wp.lon},${wp.lat},${wp.altMeters}`).join(' ');
+    const coordsStr = updatedWaypoints.map(wp => `${wp.lon.toFixed(8)},${wp.lat.toFixed(8)},${wp.altMeters.toFixed(1)}`).join(' ');
     return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${escapeXml(name)}</name><Style id="flightPathStyle"><LineStyle><color>ff00ffff</color><width>9</width></LineStyle></Style><Style id="waypointStyle"><IconStyle><Icon><href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href></Icon><hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/></IconStyle><LabelStyle><scale>0.8</scale></LabelStyle></Style><Folder><name>Trace du vol</name><Placemark><name>${escapeXml(name)}</name><styleUrl>#flightPathStyle</styleUrl><LineString><extrude>1</extrude><tessellate>1</tessellate><altitudeMode>absolute</altitudeMode><coordinates>${coordsStr}</coordinates></LineString></Placemark></Folder><Folder><name>Waypoints</name>${placemarksKML}</Folder></Document></kml>`;
 }
 

@@ -22,6 +22,62 @@ function escapeHtml(value) {
     return escapeXml(value);
 }
 
+function normalizeCoordinateNumber(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+
+    const text = String(value ?? '').trim();
+    if (!text) return NaN;
+
+    let normalized = text.replace(/\s+/g, '');
+    if (normalized.includes(',') && !normalized.includes('.')) {
+        normalized = normalized.replace(',', '.');
+    }
+
+    const number = Number(normalized);
+    return Number.isFinite(number) ? number : NaN;
+}
+
+function isValidLatLon(lat, lon) {
+    return Number.isFinite(lat) && Number.isFinite(lon) &&
+        Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+}
+
+function shouldSwapLikelyWesternEuropeCoordinates(lat, lon) {
+    return Math.abs(lat) <= 20 && lon >= 35 && lon <= 72;
+}
+
+function normalizeLatLon(latValue, lonValue) {
+    const lat = normalizeCoordinateNumber(latValue);
+    const lon = normalizeCoordinateNumber(lonValue);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return { lat, lon, isValid: false, swapped: false };
+    }
+
+    if (isValidLatLon(lat, lon) && shouldSwapLikelyWesternEuropeCoordinates(lat, lon)) {
+        return { lat: lon, lon: lat, isValid: true, swapped: true };
+    }
+
+    if (isValidLatLon(lat, lon)) {
+        return { lat, lon, isValid: true, swapped: false };
+    }
+
+    if (isValidLatLon(lon, lat)) {
+        return { lat: lon, lon: lat, isValid: true, swapped: true };
+    }
+
+    return { lat, lon, isValid: false, swapped: false };
+}
+
+function normalizeWaypointCoordinates(wp) {
+    const normalized = normalizeLatLon(wp?.lat, wp?.lon);
+    return {
+        ...wp,
+        lat: normalized.lat,
+        lon: normalized.lon
+    };
+}
+
 function parseDDM(str) {
     const regex = /([NS])\s*(\d{1,3})[^\d+-]*([\d.,]+)\s*([EW])\s*(\d{1,3})[^\d+-]*([\d.,]+)/i;
     const match = String(str || '').match(regex);
@@ -141,6 +197,11 @@ function calculateDestinationPoint(lat1, lon1, bearing, distanceNm) {
 }
 
 function decimalToDDM(lat, lon) { 
+    const normalized = normalizeLatLon(lat, lon);
+    lat = normalized.lat;
+    lon = normalized.lon;
+    if (!isValidLatLon(lat, lon)) return '';
+
     const formatPart = (deg, isLat) => { 
         const hemisphere = deg >= 0 ? (isLat ? 'N' : 'E') : (isLat ? 'S' : 'W'); 
         deg = Math.abs(deg); 
@@ -182,13 +243,17 @@ function decimalToDDMMSS_CRD(lat, lon) {
  * @returns {Array<object>} Un tableau d'objets waypoint uniques représentant les extrêmes.
  */
 function getExtremeWaypoints(waypoints) {
-    if (!waypoints || waypoints.length === 0) {
+    const validWaypoints = (waypoints || [])
+        .map(normalizeWaypointCoordinates)
+        .filter(wp => isValidLatLon(wp.lat, wp.lon));
+
+    if (validWaypoints.length === 0) {
         return [];
     }
 
-    let north = waypoints[0], south = waypoints[0], east = waypoints[0], west = waypoints[0];
+    let north = validWaypoints[0], south = validWaypoints[0], east = validWaypoints[0], west = validWaypoints[0];
 
-    for (const wp of waypoints) {
+    for (const wp of validWaypoints) {
         if (wp.lat > north.lat) north = wp;
         if (wp.lat < south.lat) south = wp;
         if (wp.lon > east.lon) east = wp;

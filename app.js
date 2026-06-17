@@ -153,11 +153,9 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchWeatherBtn.addEventListener('click', handleFetchWeather);
 
     // Pré-remplir la date à l'heure actuelle + 1h, arrondie
-    const now = new Date();
-    now.setHours(now.getHours() + 1, 0, 0, 0); // Prochaine heure ronde
-    // Conversion au format YYYY-MM-DDTHH:MM requis par l'input
-    const localDateTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-    forecastDateTimeInput.value = localDateTime;
+    const nextUtcHour = new Date(Date.now() + 60 * 60 * 1000);
+    nextUtcHour.setUTCMinutes(0, 0, 0);
+    forecastDateTimeInput.value = nextUtcHour.toISOString().slice(0, 16);
 
 
     // Gestionnaires d'événements pour le tableau (glisser-déposer, clics, etc.)
@@ -629,7 +627,15 @@ function handleGenerateCRD() {
 
 function handleGenerateKML() {
     if (!ensureMinWaypoints(2)) return;
-    const kmlContent = generateKML(flightData.routeName, flightData.waypoints, globalIsaDeviation);
+    const kmlWaypoints = flightData.waypoints
+        .map(normalizeWaypointCoordinates)
+        .filter(wp => isValidLatLon(wp.lat, wp.lon));
+    if (kmlWaypoints.length < 2) {
+        alert("Erreur KML : au moins 2 waypoints avec coordonnées valides sont nécessaires.");
+        return;
+    }
+
+    const kmlContent = generateKML(flightData.routeName, kmlWaypoints, globalIsaDeviation);
     const fileName = `${getSafeFileBase(flightData.routeName)}.kml`;
     createDownloadLink(kmlContent, fileName, 'application/vnd.google-earth.kml+xml');
 }
@@ -763,7 +769,7 @@ function loadSharedLogFromHash() {
         const json = LZString.decompressFromEncodedURIComponent(match[1]);
         const data = JSON.parse(json);
         if (!data || !Array.isArray(data.waypoints)) throw new Error('Données invalides');
-        flightData = { routeName: data.routeName || '', waypoints: data.waypoints };
+        flightData = { routeName: data.routeName || '', waypoints: normalizeImportedWaypoints(data.waypoints) };
         flightData.waypoints.forEach(wp => { wp.comment = wp.comment || ''; });
         globalIsaDeviation = data.globalIsaDeviation ?? 0;
         newPointCounter = 1;
@@ -909,11 +915,38 @@ function handlePrint(clickedButton) {
 
 // --- FONCTIONS MÉTÉO (Open-Meteo) ---
 
+function parseUtcDateTimeInput(value) {
+    const match = String(value || '').match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})$/);
+    if (!match) return null;
+
+    const hour = parseInt(match[2], 10);
+    const minute = parseInt(match[3], 10);
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+
+    return {
+        dateString: match[1],
+        hour,
+        minute,
+        date: new Date(`${match[1]}T${match[2]}:${match[3]}:00Z`)
+    };
+}
+
+function normalizeWeatherLocations(apiData) {
+    if (Array.isArray(apiData)) return apiData;
+    return apiData && typeof apiData === 'object' ? [apiData] : [];
+}
+
+function pushFiniteValue(target, value) {
+    const number = Number(value);
+    if (Number.isFinite(number)) target.push(number);
+}
+
 async function handleFetchWeather() {
     const forecastDateTime = document.getElementById('forecast-datetime').value;
+    const requestedUtc = parseUtcDateTimeInput(forecastDateTime);
 
-    if (!forecastDateTime) {
-        alert("Veuillez sélectionner une date et une heure pour la prévision.");
+    if (!requestedUtc) {
+        alert("Veuillez sélectionner une date et une heure UTC valide pour la prévision.");
         return;
     }
 
@@ -929,7 +962,7 @@ async function handleFetchWeather() {
     
     const latString = extremeWaypoints.map(wp => wp.lat.toFixed(4)).join(',');
     const lonString = extremeWaypoints.map(wp => wp.lon.toFixed(4)).join(',');
-    const date = forecastDateTime.split('T')[0];
+    const date = requestedUtc.dateString;
 
     const hourlyParams = [
         'pressure_msl',
@@ -951,10 +984,10 @@ async function handleFetchWeather() {
             throw new Error(`Erreur Open-Meteo: ${weatherData.reason || 'Erreur inconnue'}`);
         }
 
-        processAndDisplayWeather(weatherData, forecastDateTime);
+        processAndDisplayWeather(weatherData, requestedUtc);
 
     } catch (error) {
-        resultsContainer.innerHTML = `<p class="weather-error">Erreur: ${error.message}</p>`;
+        resultsContainer.innerHTML = `<p class="weather-error">Erreur: ${escapeHtml(error.message)}</p>`;
         console.error("Erreur lors de la récupération des données météo:", error);
     }
 }
@@ -965,10 +998,11 @@ function calculateStandardIsaTempC(altitudeFt) {
     return ISA_SEA_LEVEL_TEMP_C - ((altitudeFt / 1000) * LAPSE_RATE_C_PER_1000_FT);
 }
 
-function processAndDisplayWeather(apiData, requestedDateTime) {
+function processAndDisplayWeather(apiData, requestedUtc) {
     const resultsContainer = document.getElementById('weather-results-container');
+    const locations = normalizeWeatherLocations(apiData);
     
-    if (!Array.isArray(apiData)) {
+    if (locations.length === 0) {
         console.error("La réponse de l'API n'est pas un tableau:", apiData);
         resultsContainer.innerHTML = `<p class="weather-error">Format de réponse API inattendu.</p>`;
         return;
@@ -979,11 +1013,9 @@ function processAndDisplayWeather(apiData, requestedDateTime) {
     const allWindSpeedsFL100 = [], allWindDirsFL100 = [];
 
     // CORRECTION : Chercher l'heure arrondie, pas l'heure exacte.
-    const requestedDate = new Date(requestedDateTime);
-    const targetHour = requestedDate.getUTCHours();
-    const targetApiTimeString = `T${targetHour.toString().padStart(2, '0')}:00`;
+    const targetApiTimeString = `T${requestedUtc.hour.toString().padStart(2, '0')}:00`;
 
-    apiData.forEach(locationData => {
+    locations.forEach(locationData => {
         if (!locationData.hourly || !locationData.hourly.time) {
             console.warn("Données horaires manquantes pour une localisation:", locationData);
             return;
@@ -992,20 +1024,20 @@ function processAndDisplayWeather(apiData, requestedDateTime) {
         const timeIndex = locationData.hourly.time.findIndex(t => t.endsWith(targetApiTimeString));
 
         if (timeIndex === -1) {
-             console.warn(`Heure ${requestedDate.toISOString().slice(0, 16)} non trouvée pour une localisation.`);
+             console.warn(`Heure ${requestedUtc.date.toISOString().slice(0, 16)} non trouvée pour une localisation.`);
              return;
         }
 
-        allQnh.push(locationData.hourly.pressure_msl[timeIndex]);
-        allTempFL050.push(locationData.hourly.temperature_850hPa[timeIndex]);
-        allWindSpeedsFL050.push(locationData.hourly.windspeed_850hPa[timeIndex]);
-        allWindDirsFL050.push(locationData.hourly.winddirection_850hPa[timeIndex]);
-        allTempFL100.push(locationData.hourly.temperature_700hPa[timeIndex]);
-        allWindSpeedsFL100.push(locationData.hourly.windspeed_700hPa[timeIndex]);
-        allWindDirsFL100.push(locationData.hourly.winddirection_700hPa[timeIndex]);
+        pushFiniteValue(allQnh, locationData.hourly.pressure_msl?.[timeIndex]);
+        pushFiniteValue(allTempFL050, locationData.hourly.temperature_850hPa?.[timeIndex]);
+        pushFiniteValue(allWindSpeedsFL050, locationData.hourly.windspeed_850hPa?.[timeIndex]);
+        pushFiniteValue(allWindDirsFL050, locationData.hourly.winddirection_850hPa?.[timeIndex]);
+        pushFiniteValue(allTempFL100, locationData.hourly.temperature_700hPa?.[timeIndex]);
+        pushFiniteValue(allWindSpeedsFL100, locationData.hourly.windspeed_700hPa?.[timeIndex]);
+        pushFiniteValue(allWindDirsFL100, locationData.hourly.winddirection_700hPa?.[timeIndex]);
     });
 
-    if (allQnh.length === 0) {
+    if (allQnh.length === 0 || allTempFL050.length === 0 || allTempFL100.length === 0) {
         resultsContainer.innerHTML = `<p class="weather-error">Aucune donnée météo valide trouvée pour l'heure spécifiée. Essayez une heure ronde (ex: 14:00).</p>`;
         return;
     }
@@ -1030,7 +1062,7 @@ function processAndDisplayWeather(apiData, requestedDateTime) {
     };
     
     lastWeatherAverages = {
-        time: requestedDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + requestedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + 'Z',
+        time: requestedUtc.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }) + ' ' + requestedUtc.date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + 'Z',
         qnh: Math.round(avgQnh),
         tempFL050: avgTempFL050.toFixed(1),
         isaDevFL050: formatIsaDeviation(isaDeviationFL050),
@@ -1084,17 +1116,22 @@ function processAndDisplayWeather(apiData, requestedDateTime) {
 
 function calculateVectorialWindAverage(speeds, directions) {
     let sumU = 0, sumV = 0;
+    let count = 0;
     const KMH_TO_KTS = 0.539957;
 
-    for (let i = 0; i < speeds.length; i++) {
+    for (let i = 0; i < Math.min(speeds.length, directions.length); i++) {
+        if (!Number.isFinite(speeds[i]) || !Number.isFinite(directions[i])) continue;
         const speedKts = speeds[i] * KMH_TO_KTS;
         const angleRad = directions[i] * Math.PI / 180;
         sumU += speedKts * Math.sin(angleRad);
         sumV += speedKts * Math.cos(angleRad);
+        count++;
     }
+
+    if (count === 0) return { dir: '---', kts: 0 };
     
-    const avgU = sumU / speeds.length;
-    const avgV = sumV / speeds.length;
+    const avgU = sumU / count;
+    const avgV = sumV / count;
 
     const avgWindSpeedKts = Math.sqrt(avgU * avgU + avgV * avgV);
     
@@ -1227,8 +1264,9 @@ async function fetchDzWeather() {
         const totHour = totDate.getUTCHours();
         const targetApiTimeString = `T${totHour.toString().padStart(2, '0')}:00`;
         const timeIndex = sfcData.hourly.time.findIndex(t => t.endsWith(targetApiTimeString));
+        const altTimeIndex = altData.hourly?.time?.findIndex(t => t.endsWith(targetApiTimeString)) ?? -1;
 
-        if (timeIndex === -1) {
+        if (timeIndex === -1 || altTimeIndex === -1) {
             console.error("Could not find time. TOT Date:", totDate, "Target API time string:", targetApiTimeString, "API times:", sfcData.hourly.time);
             throw new Error("Heure du TOT non trouvée dans les prévisions.");
         }
@@ -1240,9 +1278,9 @@ async function fetchDzWeather() {
         const qnh = sfcData.hourly.pressure_msl[timeIndex].toFixed(0) + ' hPa';
 
         const isHighAlt = altVraie > 7500;
-        const altWindDir = isHighAlt ? altData.hourly.winddirection_700hPa[timeIndex] : altData.hourly.winddirection_850hPa[timeIndex];
-        const altWindKmh = isHighAlt ? altData.hourly.windspeed_700hPa[timeIndex] : altData.hourly.windspeed_850hPa[timeIndex];
-        const altTempVal = isHighAlt ? altData.hourly.temperature_700hPa[timeIndex] : altData.hourly.temperature_850hPa[timeIndex];
+        const altWindDir = isHighAlt ? altData.hourly.winddirection_700hPa[altTimeIndex] : altData.hourly.winddirection_850hPa[altTimeIndex];
+        const altWindKmh = isHighAlt ? altData.hourly.windspeed_700hPa[altTimeIndex] : altData.hourly.windspeed_850hPa[altTimeIndex];
+        const altTempVal = isHighAlt ? altData.hourly.temperature_700hPa[altTimeIndex] : altData.hourly.temperature_850hPa[altTimeIndex];
         
         const altWind = `${altWindDir}°/${(altWindKmh * 0.539957).toFixed(0)}kt`;
         const altTemp = Math.round(altTempVal) + '°C';
@@ -1259,7 +1297,7 @@ async function fetchDzWeather() {
         waypoint.dzData.weather = { altWind, altTemp, sfcWind, sfcTemp, qnh };
 
     } catch (error) {
-        resultsContainer.innerHTML = `<p class="weather-error" style="grid-column: 1 / -1;">Erreur: ${error.message}</p>`;
+        resultsContainer.innerHTML = `<p class="weather-error" style="grid-column: 1 / -1;">Erreur: ${escapeHtml(error.message)}</p>`;
         console.error("Fetch DZ Weather Error:", error);
     }
 }

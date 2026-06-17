@@ -66,7 +66,7 @@ function processFlightPlan(fileContent, fileName) {
         // Pour les fichiers JSON, altFeet est déjà l'altitude VRAIE
         flightData = {
             routeName: data.routeName,
-            waypoints: data.waypoints
+            waypoints: normalizeImportedWaypoints(data.waypoints)
         };
         globalIsaDeviation = data.globalIsaDeviation ?? 0;
 
@@ -77,11 +77,24 @@ function processFlightPlan(fileContent, fileName) {
     } else {
         const parsedPlan = parseFplXml(fileContent, fileName);
         flightData.routeName = parsedPlan.routeName;
-        flightData.waypoints = parsedPlan.waypoints;
+        flightData.waypoints = normalizeImportedWaypoints(parsedPlan.waypoints);
     }
 
     // Code commun après le parsing (affichage de l'éditeur)
     showEditor();
+}
+
+function normalizeImportedWaypoints(waypoints) {
+    return (waypoints || [])
+        .map(wp => {
+            const normalized = normalizeWaypointCoordinates(wp);
+            return {
+                ...normalized,
+                altFeet: Number(wp.altFeet) || 0,
+                comment: wp.comment || ''
+            };
+        })
+        .filter(wp => isValidLatLon(wp.lat, wp.lon));
 }
 
 function parseFplXml(fileContent, fileName) {
@@ -202,11 +215,12 @@ function readCoordinatePair(element) {
         firstTextByLocalName(element, ['lat', 'latitude']);
     const lonValue = firstAttributeByLocalName(element, ['lon', 'lng', 'long', 'longitude']) ||
         firstTextByLocalName(element, ['lon', 'lng', 'long', 'longitude']);
-    const lat = parseFlexibleNumber(latValue);
-    const lon = parseFlexibleNumber(lonValue);
+    const lat = normalizeCoordinateNumber(latValue);
+    const lon = normalizeCoordinateNumber(lonValue);
 
     if (Number.isFinite(lat) && Number.isFinite(lon)) {
-        return { lat, lon };
+        const normalized = normalizeLatLon(lat, lon);
+        return normalized.isValid ? { lat: normalized.lat, lon: normalized.lon } : null;
     }
 
     const positionText = firstTextByLocalName(element, ['world-position', 'worldposition', 'position', 'coordinates', 'coord']);
@@ -222,21 +236,25 @@ function parseCoordinatePairText(text) {
 
     const numericParts = value
         .split(/[,\s;]+/)
-        .map(parseFlexibleNumber)
+        .map(normalizeCoordinateNumber)
         .filter(Number.isFinite);
 
     if (numericParts.length < 2) return null;
 
     const first = numericParts[0];
     const second = numericParts[1];
+    let normalized;
     if (numericParts.length >= 3 && value.includes(',') && Math.abs(first) <= 180 && Math.abs(second) <= 90) {
-        return { lat: second, lon: first };
+        normalized = normalizeLatLon(second, first);
+        return normalized.isValid ? { lat: normalized.lat, lon: normalized.lon } : null;
     }
     if (Math.abs(first) <= 90 && Math.abs(second) <= 180) {
-        return { lat: first, lon: second };
+        normalized = normalizeLatLon(first, second);
+        return normalized.isValid ? { lat: normalized.lat, lon: normalized.lon } : null;
     }
     if (Math.abs(second) <= 90 && Math.abs(first) <= 180) {
-        return { lat: second, lon: first };
+        normalized = normalizeLatLon(second, first);
+        return normalized.isValid ? { lat: normalized.lat, lon: normalized.lon } : null;
     }
     return null;
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fpl-editor-v10'; // IMPORTANT : incrémenter à chaque modif des fichiers en cache
+const CACHE_NAME = 'fpl-editor-v11'; // IMPORTANT : incrémenter à chaque modif des fichiers en cache
 
 // Ressources de base de l'application (le « shell »). Tout est mis en cache
 // pour que l'app soit utilisable 100% hors connexion une fois installée.
