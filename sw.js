@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fpl-editor-v11'; // IMPORTANT : incrémenter à chaque modif des fichiers en cache
+const CACHE_NAME = 'fpl-editor-v12'; // IMPORTANT : incrémenter à chaque modif des fichiers en cache
 
 // Ressources de base de l'application (le « shell »). Tout est mis en cache
 // pour que l'app soit utilisable 100% hors connexion une fois installée.
@@ -74,30 +74,31 @@ self.addEventListener('fetch', event => {
   }
 
   // Requêtes de NAVIGATION (ouverture de l'app depuis l'écran d'accueil) :
-  // on renvoie TOUJOURS le shell en cache. C'est la garantie d'un démarrage
-  // hors connexion, quelle que soit l'URL de lancement (start_url).
+  // réseau d'abord pour charger les corrections, cache en repli hors ligne.
   if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match('index.html').then(cached =>
-        cached || fetch(request).catch(() => caches.match('index.html'))
-      )
+      fetch(request)
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put('index.html', copy));
+          return response;
+        })
+        .catch(() => caches.match('index.html'))
     );
     return;
   }
 
-  // Autres ressources (JS, CSS, images, manifest) : « cache d'abord », avec
-  // repli réseau et mise en cache à la volée de ce qui a été récupéré en
-  // ligne (filet de sécurité si une ressource n'était pas préchargée).
+  // Autres ressources (JS, CSS, images, manifest) : réseau d'abord pour ne
+  // pas exécuter une ancienne version du code, cache en repli hors ligne.
   event.respondWith(
-    caches.match(request).then(cached => {
-      if (cached) return cached;
-      return fetch(request).then(response => {
+    fetch(request)
+      .then(response => {
         if (response && response.status === 200 && response.type === 'basic') {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
         }
         return response;
-      });
-    })
+      })
+      .catch(() => caches.match(request))
   );
 });

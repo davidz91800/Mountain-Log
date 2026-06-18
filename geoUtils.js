@@ -79,23 +79,111 @@ function normalizeWaypointCoordinates(wp) {
 }
 
 function parseDDM(str) {
-    const regex = /([NS])\s*(\d{1,3})[^\d+-]*([\d.,]+)\s*([EW])\s*(\d{1,3})[^\d+-]*([\d.,]+)/i;
-    const match = String(str || '').match(regex);
-    if (!match) return null;
+    const value = String(str || '').trim();
+    if (!value) return null;
 
-    const latMinutes = parseFloat(match[3].replace(',', '.'));
-    const lonMinutes = parseFloat(match[6].replace(',', '.'));
-    if (!Number.isFinite(latMinutes) || !Number.isFinite(lonMinutes) || latMinutes >= 60 || lonMinutes >= 60) {
-        return null;
+    const coordinateChars = '[+\\-]?\\d[\\d\\s.,\\u00B0\\u00BA\\u0027\\u2019\\u2032\\u0022\\u2033?]*';
+    const prefixMatch = value.match(new RegExp(`([NS])\\s*(${coordinateChars})\\s*([EW])\\s*(${coordinateChars})`, 'i'));
+    const suffixMatch = value.match(new RegExp(`(${coordinateChars})\\s*([NS])\\s*(${coordinateChars})\\s*([EW])`, 'i'));
+
+    let latComponent = '';
+    let lonComponent = '';
+    if (prefixMatch) {
+        latComponent = `${prefixMatch[1]}${prefixMatch[2]}`;
+        lonComponent = `${prefixMatch[3]}${prefixMatch[4]}`;
+    } else if (suffixMatch) {
+        latComponent = `${suffixMatch[1]}${suffixMatch[2]}`;
+        lonComponent = `${suffixMatch[3]}${suffixMatch[4]}`;
+    } else {
+        latComponent = extractHemisphereCoordinate(value, 'NS');
+        lonComponent = extractHemisphereCoordinate(value, 'EW');
     }
 
-    let lat = parseFloat(match[2]) + latMinutes / 60;
-    if (match[1].toUpperCase() === 'S') lat = -lat;
+    if (!latComponent || !lonComponent) return null;
 
-    let lon = parseFloat(match[5]) + lonMinutes / 60;
-    if (match[4].toUpperCase() === 'W') lon = -lon;
+    const lat = parseCoordinateComponent(latComponent, true);
+    const lon = parseCoordinateComponent(lonComponent, false);
+    const normalized = normalizeLatLon(lat, lon);
+    return normalized.isValid ? { lat: normalized.lat, lon: normalized.lon } : null;
+}
 
-    return { lat, lon };
+function extractHemisphereCoordinate(value, hemispheres) {
+    const coordinateChars = '[+\\-]?\\d[\\d\\s.,\\u00B0\\u00BA\\u0027\\u2019\\u2032\\u0022\\u2033?]*';
+    const prefixMatch = String(value).match(new RegExp(`[${hemispheres}]\\s*${coordinateChars}`, 'i'));
+    if (prefixMatch) return prefixMatch[0];
+
+    const suffixMatch = String(value).match(new RegExp(`${coordinateChars}\\s*[${hemispheres}]`, 'i'));
+    return suffixMatch ? suffixMatch[0] : '';
+}
+
+function parseCoordinateComponent(value, isLat) {
+    const text = String(value ?? '').trim().toUpperCase().replace(/,/g, '.');
+    if (!text) return NaN;
+
+    const hemisphereMatch = text.match(/[NSEW]/);
+    const hemisphere = hemisphereMatch ? hemisphereMatch[0] : '';
+    if (hemisphere) {
+        if (isLat && !/[NS]/.test(hemisphere)) return NaN;
+        if (!isLat && !/[EW]/.test(hemisphere)) return NaN;
+    }
+
+    let sign = /[SW]/.test(hemisphere) ? -1 : 1;
+    let numericText = text.replace(/[NSEW]/g, ' ');
+    const explicitSign = numericText.match(/[+-]/);
+    if (explicitSign && explicitSign[0] === '-') sign *= -1;
+
+    numericText = numericText
+        .replace(/[+-]/g, ' ')
+        .replace(/[\u00B0\u00BA\u0027\u2019\u2032\u0022\u2033]/g, ' ')
+        .replace(/[^\d.]+/g, ' ')
+        .trim();
+
+    const parts = numericText.match(/\d+(?:\.\d+)?/g) || [];
+    if (parts.length === 0) return NaN;
+
+    const decimal = parts.length >= 2
+        ? parseDegreesMinutesSeconds(parts, isLat)
+        : parseSingleCoordinateNumber(parts[0], isLat);
+
+    return Number.isFinite(decimal) ? sign * decimal : NaN;
+}
+
+function parseSingleCoordinateNumber(rawValue, isLat) {
+    const value = String(rawValue || '').replace(',', '.');
+    const decimal = Number(value);
+    if (!Number.isFinite(decimal)) return NaN;
+
+    const maxDegrees = isLat ? 90 : 180;
+    if (Math.abs(decimal) <= maxDegrees) return Math.abs(decimal);
+
+    return parseCompactDdmNumber(value, isLat);
+}
+
+function parseCompactDdmNumber(rawValue, isLat) {
+    const normalized = String(rawValue || '').replace(/[^\d.]/g, '');
+    const [integerPart, fractionPart = ''] = normalized.split('.');
+    if (!integerPart || integerPart.length < 3) return NaN;
+
+    const degreeDigits = integerPart.length - 2;
+    const degrees = Number(integerPart.slice(0, degreeDigits));
+    const minutes = Number(integerPart.slice(degreeDigits) + (fractionPart ? `.${fractionPart}` : ''));
+    return composeCoordinateDegrees(degrees, minutes, 0, isLat);
+}
+
+function parseDegreesMinutesSeconds(parts, isLat) {
+    const degrees = Number(parts[0]);
+    const minutes = Number(parts[1]);
+    const seconds = parts.length >= 3 ? Number(parts[2]) : 0;
+    return composeCoordinateDegrees(degrees, minutes, seconds, isLat);
+}
+
+function composeCoordinateDegrees(degrees, minutes, seconds, isLat) {
+    const maxDegrees = isLat ? 90 : 180;
+    if (!Number.isFinite(degrees) || !Number.isFinite(minutes) || !Number.isFinite(seconds)) return NaN;
+    if (degrees < 0 || degrees > maxDegrees || minutes < 0 || minutes >= 60 || seconds < 0 || seconds >= 60) return NaN;
+
+    const decimal = degrees + minutes / 60 + seconds / 3600;
+    return decimal <= maxDegrees ? decimal : NaN;
 }
 
 /**

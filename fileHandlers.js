@@ -85,7 +85,7 @@ function processFlightPlan(fileContent, fileName) {
 }
 
 function normalizeImportedWaypoints(waypoints) {
-    return (waypoints || [])
+    const normalizedWaypoints = (waypoints || [])
         .map(wp => {
             const normalized = normalizeWaypointCoordinates(wp);
             return {
@@ -95,6 +95,8 @@ function normalizeImportedWaypoints(waypoints) {
             };
         })
         .filter(wp => isValidLatLon(wp.lat, wp.lon));
+
+    return repairLikelyLongitudeDegreeSlips(normalizedWaypoints);
 }
 
 function parseFplXml(fileContent, fileName) {
@@ -215,8 +217,8 @@ function readCoordinatePair(element) {
         firstTextByLocalName(element, ['lat', 'latitude']);
     const lonValue = firstAttributeByLocalName(element, ['lon', 'lng', 'long', 'longitude']) ||
         firstTextByLocalName(element, ['lon', 'lng', 'long', 'longitude']);
-    const lat = normalizeCoordinateNumber(latValue);
-    const lon = normalizeCoordinateNumber(lonValue);
+    const lat = parseCoordinateComponent(latValue, true);
+    const lon = parseCoordinateComponent(lonValue, false);
 
     if (Number.isFinite(lat) && Number.isFinite(lon)) {
         const normalized = normalizeLatLon(lat, lon);
@@ -233,6 +235,16 @@ function parseCoordinatePairText(text) {
 
     const ddmCoords = parseDDM(value);
     if (ddmCoords) return ddmCoords;
+
+    const rawParts = value.split(/[,\s;]+/).filter(Boolean);
+    if (rawParts.length >= 2 && looksLikeCompactCoordinatePair(rawParts[0], rawParts[1])) {
+        const compactLat = parseCoordinateComponent(rawParts[0], true);
+        const compactLon = parseCoordinateComponent(rawParts[1], false);
+        const normalizedCompact = normalizeLatLon(compactLat, compactLon);
+        if (normalizedCompact.isValid) {
+            return { lat: normalizedCompact.lat, lon: normalizedCompact.lon };
+        }
+    }
 
     const numericParts = value
         .split(/[,\s;]+/)
@@ -257,6 +269,71 @@ function parseCoordinatePairText(text) {
         return normalized.isValid ? { lat: normalized.lat, lon: normalized.lon } : null;
     }
     return null;
+}
+
+function looksLikeCompactCoordinatePair(latPart, lonPart) {
+    const compactPattern = /^[NSWE+-]?\d{4,}(?:[.,]\d+)?[NSWE]?$/i;
+    const latNumber = normalizeCoordinateNumber(latPart);
+    const lonNumber = normalizeCoordinateNumber(lonPart);
+    return compactPattern.test(cleanText(latPart)) ||
+        compactPattern.test(cleanText(lonPart)) ||
+        Math.abs(latNumber) > 90 ||
+        Math.abs(lonNumber) > 180;
+}
+
+function repairLikelyLongitudeDegreeSlips(waypoints) {
+    if (!Array.isArray(waypoints) || waypoints.length < 3) return waypoints;
+
+    return waypoints.map((wp, index) => {
+        if (index === 0 || index === waypoints.length - 1 || !isValidLatLon(wp.lat, wp.lon)) return wp;
+
+        const previous = waypoints[index - 1];
+        const next = waypoints[index + 1];
+        if (!isValidLatLon(previous?.lat, previous?.lon) || !isValidLatLon(next?.lat, next?.lon)) return wp;
+
+        const prevDistance = calculateDistanceNM(previous.lat, previous.lon, wp.lat, wp.lon);
+        const nextDistance = calculateDistanceNM(wp.lat, wp.lon, next.lat, next.lon);
+        const directNeighborDistance = calculateDistanceNM(previous.lat, previous.lon, next.lat, next.lon);
+
+        if (prevDistance < 40 || nextDistance < 40 || directNeighborDistance > 40) return wp;
+
+        const currentTotal = prevDistance + nextDistance;
+        let bestCandidate = null;
+
+        for (let delta = -5; delta <= 5; delta++) {
+            if (delta === 0) continue;
+            const candidateLon = wp.lon + delta;
+            if (!isValidLatLon(wp.lat, candidateLon)) continue;
+
+            const candidatePrevDistance = calculateDistanceNM(previous.lat, previous.lon, wp.lat, candidateLon);
+            const candidateNextDistance = calculateDistanceNM(wp.lat, candidateLon, next.lat, next.lon);
+            const candidateTotal = candidatePrevDistance + candidateNextDistance;
+
+            if (!bestCandidate || candidateTotal < bestCandidate.totalDistance) {
+                bestCandidate = {
+                    lon: candidateLon,
+                    prevDistance: candidatePrevDistance,
+                    nextDistance: candidateNextDistance,
+                    totalDistance: candidateTotal
+                };
+            }
+        }
+
+        if (!bestCandidate) return wp;
+
+        const maxCandidateLeg = Math.max(35, directNeighborDistance * 3 + 5);
+        const isPlausibleRepair = bestCandidate.totalDistance < currentTotal * 0.35 &&
+            currentTotal - bestCandidate.totalDistance > 50 &&
+            bestCandidate.prevDistance <= maxCandidateLeg &&
+            bestCandidate.nextDistance <= maxCandidateLeg;
+
+        if (!isPlausibleRepair) return wp;
+
+        console.warn(
+            `Correction longitude ${wp.identifier || index}: ${wp.lon.toFixed(6)} -> ${bestCandidate.lon.toFixed(6)}`
+        );
+        return { ...wp, lon: bestCandidate.lon };
+    });
 }
 
 function readAltitudeFeet(element) {
